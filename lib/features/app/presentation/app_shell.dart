@@ -5,6 +5,7 @@ import '../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../budgets/presentation/pages/budgets_page.dart';
 import '../../categories/presentation/cubit/categories_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../reports/presentation/pages/reports_page.dart';
 import '../../savings_goals/presentation/pages/savings_goals_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../../transactions/presentation/pages/transactions_page.dart';
@@ -70,7 +71,7 @@ class _AppShellState extends State<AppShell> {
       label: 'Reports',
       icon: Icons.bar_chart_outlined,
       selectedIcon: Icons.bar_chart,
-      view: Center(child: Text('Reports View')),
+      view: ReportsPage(),
     ),
   ];
 

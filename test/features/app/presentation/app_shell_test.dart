@@ -13,6 +13,13 @@ import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_cu
 import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_state.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
+import 'package:my_budget_tracker/features/reports/domain/entities/cash_flow_report.dart';
+import 'package:my_budget_tracker/features/reports/domain/entities/category_breakdown_report.dart';
+import 'package:my_budget_tracker/features/reports/domain/entities/net_worth_trend_report.dart';
+import 'package:my_budget_tracker/features/reports/domain/entities/reports_timeframe.dart';
+import 'package:my_budget_tracker/features/reports/presentation/cubit/reports_cubit.dart';
+import 'package:my_budget_tracker/features/reports/presentation/cubit/reports_state.dart';
+import 'package:my_budget_tracker/features/reports/presentation/pages/reports_page.dart';
 import 'package:my_budget_tracker/features/savings_goals/domain/repositories/savings_goal_repository.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_state.dart';
@@ -26,6 +33,7 @@ class MockCategoriesCubit extends MockCubit<CategoriesState> implements Categori
 class MockBudgetsCubit extends MockCubit<BudgetsState> implements BudgetsCubit {}
 class MockSavingsGoalsCubit extends MockCubit<SavingsGoalsState> implements SavingsGoalsCubit {}
 class MockSavingsGoalRepository extends Mock implements SavingsGoalRepository {}
+class MockReportsCubit extends MockCubit<ReportsState> implements ReportsCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
@@ -35,6 +43,7 @@ void main() {
     late BudgetsCubit budgetsCubit;
     late SavingsGoalsCubit savingsGoalsCubit;
     late SavingsGoalRepository savingsGoalRepository;
+    late ReportsCubit reportsCubit;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
@@ -43,6 +52,7 @@ void main() {
       budgetsCubit = MockBudgetsCubit();
       savingsGoalsCubit = MockSavingsGoalsCubit();
       savingsGoalRepository = MockSavingsGoalRepository();
+      reportsCubit = MockReportsCubit();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -71,6 +81,29 @@ void main() {
         const SavingsGoalsLoaded(goals: []),
       );
 
+      when(() => reportsCubit.state).thenReturn(
+        const ReportsLoaded(
+          timeframe: ReportsTimeframe.thisMonth,
+          selectedView: ReportsView.cashFlow,
+          cashFlowReport: CashFlowReport(
+            totalIncome: Money.zero,
+            totalExpense: Money.zero,
+            netCashFlow: Money.zero,
+            savingsRate: 0.0,
+            monthlyData: [],
+          ),
+          categoryBreakdownReport: CategoryBreakdownReport(
+            totalExpense: Money.zero,
+            items: [],
+          ),
+          netWorthTrendReport: NetWorthTrendReport(
+            currentNetWorth: Money.zero,
+            netChange: Money.zero,
+            points: [],
+          ),
+        ),
+      );
+
       when(() => savingsGoalRepository.watchContributions(any()))
           .thenAnswer((_) => Stream.value([]));
     });
@@ -89,6 +122,7 @@ void main() {
               BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
               BlocProvider<BudgetsCubit>.value(value: budgetsCubit),
               BlocProvider<SavingsGoalsCubit>.value(value: savingsGoalsCubit),
+              BlocProvider<ReportsCubit>.value(value: reportsCubit),
             ],
             child: const AppShell(),
           ),
@@ -141,7 +175,7 @@ void main() {
       await tester.tap(find.text('Reports'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Reports'), findsOneWidget);
-      expect(find.text('Reports View'), findsOneWidget);
+      expect(find.byType(ReportsPage), findsOneWidget);
 
       // Tap Dashboard
       await tester.tap(find.text('Dashboard'));
