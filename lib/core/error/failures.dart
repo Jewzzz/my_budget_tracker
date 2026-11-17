@@ -46,6 +46,16 @@ class DefaultCategoryCannotBeDeletedFailure extends DomainFailure {
       : super(message ?? 'Default categories cannot be deleted.');
 }
 
+class ExcessiveGoalWithdrawalFailure extends DomainFailure {
+  const ExcessiveGoalWithdrawalFailure([String? message])
+      : super(message ?? 'Cannot withdraw more than the accumulated savings in this goal.');
+}
+
+class GoalNotFoundFailure extends DomainFailure {
+  const GoalNotFoundFailure([String? message])
+      : super(message ?? 'Savings goal was not found.');
+}
+
 class DatabaseFailure extends DomainFailure {
   const DatabaseFailure(super.message);
 }

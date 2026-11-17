@@ -12,6 +12,9 @@ import 'features/budgets/presentation/cubit/budgets_cubit.dart';
 import 'features/categories/data/repositories/category_repository_impl.dart';
 import 'features/categories/domain/repositories/category_repository.dart';
 import 'features/categories/presentation/cubit/categories_cubit.dart';
+import 'features/savings_goals/data/repositories/savings_goal_repository_impl.dart';
+import 'features/savings_goals/domain/repositories/savings_goal_repository.dart';
+import 'features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
 import 'features/transactions/data/repositories/transaction_repository_impl.dart';
 import 'features/transactions/domain/repositories/transaction_repository.dart';
 import 'features/transactions/presentation/cubit/transactions_cubit.dart';
@@ -27,6 +30,7 @@ class BudgetTrackerApp extends StatefulWidget {
   final CategoryRepository? categoryRepository;
   final TransactionRepository? transactionRepository;
   final BudgetRepository? budgetRepository;
+  final SavingsGoalRepository? savingsGoalRepository;
 
   const BudgetTrackerApp({
     super.key,
@@ -35,6 +39,7 @@ class BudgetTrackerApp extends StatefulWidget {
     this.categoryRepository,
     this.transactionRepository,
     this.budgetRepository,
+    this.savingsGoalRepository,
   });
 
   @override
@@ -47,6 +52,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
   late final CategoryRepository _categoryRepository;
   late final TransactionRepository _transactionRepository;
   late final BudgetRepository _budgetRepository;
+  late final SavingsGoalRepository _savingsGoalRepository;
   bool _isLocalDb = false;
 
   @override
@@ -63,6 +69,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _categoryRepository = widget.categoryRepository ?? CategoryRepositoryImpl(_database);
     _transactionRepository = widget.transactionRepository ?? TransactionRepositoryImpl(_database);
     _budgetRepository = widget.budgetRepository ?? BudgetRepositoryImpl(_database);
+    _savingsGoalRepository = widget.savingsGoalRepository ?? SavingsGoalRepositoryImpl(_database);
 
     _database.seedDefaultCategoriesIfEmpty();
   }
@@ -84,6 +91,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
         RepositoryProvider<CategoryRepository>.value(value: _categoryRepository),
         RepositoryProvider<TransactionRepository>.value(value: _transactionRepository),
         RepositoryProvider<BudgetRepository>.value(value: _budgetRepository),
+        RepositoryProvider<SavingsGoalRepository>.value(value: _savingsGoalRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -101,6 +109,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           ),
           BlocProvider<BudgetsCubit>(
             create: (context) => BudgetsCubit(_budgetRepository)..loadBudgets(),
+          ),
+          BlocProvider<SavingsGoalsCubit>(
+            create: (context) => SavingsGoalsCubit(_savingsGoalRepository)..loadGoals(),
           ),
         ],
         child: MaterialApp(

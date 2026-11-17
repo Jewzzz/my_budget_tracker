@@ -5,6 +5,7 @@ import '../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../budgets/presentation/pages/budgets_page.dart';
 import '../../categories/presentation/cubit/categories_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../savings_goals/presentation/pages/savings_goals_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../../transactions/presentation/pages/transactions_page.dart';
 import '../../transactions/presentation/widgets/quick_add_transaction_sheet.dart';
@@ -62,7 +63,7 @@ class _AppShellState extends State<AppShell> {
       label: 'Goals',
       icon: Icons.savings_outlined,
       selectedIcon: Icons.savings,
-      view: Center(child: Text('Goals View')),
+      view: SavingsGoalsPage(),
     ),
     _AppTabItem(
       title: 'Reports',

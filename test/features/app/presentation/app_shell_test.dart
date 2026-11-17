@@ -13,6 +13,10 @@ import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_cu
 import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_state.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
+import 'package:my_budget_tracker/features/savings_goals/domain/repositories/savings_goal_repository.dart';
+import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
+import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_state.dart';
+import 'package:my_budget_tracker/features/savings_goals/presentation/pages/savings_goals_page.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 
@@ -20,6 +24,8 @@ class MockAccountsCubit extends MockCubit<AccountsState> implements AccountsCubi
 class MockTransactionsCubit extends MockCubit<TransactionsState> implements TransactionsCubit {}
 class MockCategoriesCubit extends MockCubit<CategoriesState> implements CategoriesCubit {}
 class MockBudgetsCubit extends MockCubit<BudgetsState> implements BudgetsCubit {}
+class MockSavingsGoalsCubit extends MockCubit<SavingsGoalsState> implements SavingsGoalsCubit {}
+class MockSavingsGoalRepository extends Mock implements SavingsGoalRepository {}
 
 void main() {
   group('AppShell Widget Tests', () {
@@ -27,12 +33,16 @@ void main() {
     late TransactionsCubit transactionsCubit;
     late CategoriesCubit categoriesCubit;
     late BudgetsCubit budgetsCubit;
+    late SavingsGoalsCubit savingsGoalsCubit;
+    late SavingsGoalRepository savingsGoalRepository;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
       transactionsCubit = MockTransactionsCubit();
       categoriesCubit = MockCategoriesCubit();
       budgetsCubit = MockBudgetsCubit();
+      savingsGoalsCubit = MockSavingsGoalsCubit();
+      savingsGoalRepository = MockSavingsGoalRepository();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -56,6 +66,13 @@ void main() {
       when(() => budgetsCubit.state).thenReturn(
         const BudgetsLoaded(year: 2026, month: 5, budgets: []),
       );
+
+      when(() => savingsGoalsCubit.state).thenReturn(
+        const SavingsGoalsLoaded(goals: []),
+      );
+
+      when(() => savingsGoalRepository.watchContributions(any()))
+          .thenAnswer((_) => Stream.value([]));
     });
 
     Widget buildTestApp({ThemeMode themeMode = ThemeMode.light}) {
@@ -63,14 +80,18 @@ void main() {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeMode,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<AccountsCubit>.value(value: accountsCubit),
-            BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
-            BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
-            BlocProvider<BudgetsCubit>.value(value: budgetsCubit),
-          ],
-          child: const AppShell(),
+        home: RepositoryProvider<SavingsGoalRepository>.value(
+          value: savingsGoalRepository,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<AccountsCubit>.value(value: accountsCubit),
+              BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
+              BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
+              BlocProvider<BudgetsCubit>.value(value: budgetsCubit),
+              BlocProvider<SavingsGoalsCubit>.value(value: savingsGoalsCubit),
+            ],
+            child: const AppShell(),
+          ),
         ),
       );
     }
@@ -114,7 +135,7 @@ void main() {
       await tester.tap(find.text('Goals'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Savings Goals'), findsOneWidget);
-      expect(find.text('Goals View'), findsOneWidget);
+      expect(find.byType(SavingsGoalsPage), findsOneWidget);
 
       // Tap Reports
       await tester.tap(find.text('Reports'));
