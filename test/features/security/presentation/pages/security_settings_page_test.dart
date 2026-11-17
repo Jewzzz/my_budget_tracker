@@ -66,5 +66,20 @@ void main() {
 
       expect(find.text('Change PIN'), findsOneWidget);
     });
+
+    testWidgets('shows Data Backup & Export tile', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          const SecurityState(
+            isInitialized: true,
+            isAppLockEnabled: false,
+            hasPinSet: false,
+            isBiometricsAvailable: true,
+          ),
+        ),
+      );
+
+      expect(find.text('Data Backup & Export'), findsOneWidget);
+    });
   });
 }

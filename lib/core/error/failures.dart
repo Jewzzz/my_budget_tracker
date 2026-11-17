@@ -59,3 +59,23 @@ class GoalNotFoundFailure extends DomainFailure {
 class DatabaseFailure extends DomainFailure {
   const DatabaseFailure(super.message);
 }
+
+class InvalidChecksumFailure extends DomainFailure {
+  const InvalidChecksumFailure([String? message])
+      : super(message ?? 'Backup checksum verification failed. The file may be corrupted or modified.');
+}
+
+class IncompatibleSchemaFailure extends DomainFailure {
+  const IncompatibleSchemaFailure([String? message])
+      : super(message ?? 'The backup file schema version is incompatible with this version of the app.');
+}
+
+class CorruptBackupFailure extends DomainFailure {
+  const CorruptBackupFailure([String? message])
+      : super(message ?? 'The backup file format is corrupt or unreadable.');
+}
+
+class RestoreDataFailure extends DomainFailure {
+  const RestoreDataFailure([String? message])
+      : super(message ?? 'Failed to restore backup data.');
+}

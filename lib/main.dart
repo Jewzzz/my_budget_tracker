@@ -6,6 +6,11 @@ import 'features/accounts/data/repositories/account_repository_impl.dart';
 import 'features/accounts/domain/repositories/account_repository.dart';
 import 'features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'features/app/presentation/app_shell.dart';
+import 'features/backup/data/repositories/backup_repository_impl.dart';
+import 'features/backup/data/services/share_service_impl.dart';
+import 'features/backup/domain/repositories/backup_repository.dart';
+import 'features/backup/domain/services/share_service.dart';
+import 'features/backup/presentation/cubit/data_management_cubit.dart';
 import 'features/budgets/data/repositories/budget_repository_impl.dart';
 import 'features/budgets/domain/repositories/budget_repository.dart';
 import 'features/budgets/presentation/cubit/budgets_cubit.dart';
@@ -40,6 +45,9 @@ class BudgetTrackerApp extends StatefulWidget {
   final SavingsGoalRepository? savingsGoalRepository;
   final ReportsRepository? reportsRepository;
   final SecurityRepository? securityRepository;
+  final BackupRepository? backupRepository;
+  final ShareService? shareService;
+  final FilePickerService? filePickerService;
 
   const BudgetTrackerApp({
     super.key,
@@ -51,6 +59,9 @@ class BudgetTrackerApp extends StatefulWidget {
     this.savingsGoalRepository,
     this.reportsRepository,
     this.securityRepository,
+    this.backupRepository,
+    this.shareService,
+    this.filePickerService,
   });
 
   @override
@@ -66,6 +77,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
   late final SavingsGoalRepository _savingsGoalRepository;
   late final ReportsRepository _reportsRepository;
   late final SecurityRepository _securityRepository;
+  late final BackupRepository _backupRepository;
+  late final ShareService _shareService;
+  late final FilePickerService _filePickerService;
   bool _isLocalDb = false;
 
   @override
@@ -85,6 +99,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _savingsGoalRepository = widget.savingsGoalRepository ?? SavingsGoalRepositoryImpl(_database);
     _reportsRepository = widget.reportsRepository ?? ReportsRepositoryImpl(_database);
     _securityRepository = widget.securityRepository ?? SecurityRepositoryImpl();
+    _backupRepository = widget.backupRepository ?? BackupRepositoryImpl(database: _database);
+    _shareService = widget.shareService ?? ShareServiceImpl();
+    _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
 
     _database.seedDefaultCategoriesIfEmpty();
   }
@@ -109,6 +126,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
         RepositoryProvider<SavingsGoalRepository>.value(value: _savingsGoalRepository),
         RepositoryProvider<ReportsRepository>.value(value: _reportsRepository),
         RepositoryProvider<SecurityRepository>.value(value: _securityRepository),
+        RepositoryProvider<BackupRepository>.value(value: _backupRepository),
+        RepositoryProvider<ShareService>.value(value: _shareService),
+        RepositoryProvider<FilePickerService>.value(value: _filePickerService),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -135,6 +155,13 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           ),
           BlocProvider<SecurityCubit>(
             create: (context) => SecurityCubit(_securityRepository)..initialize(),
+          ),
+          BlocProvider<DataManagementCubit>(
+            create: (context) => DataManagementCubit(
+              backupRepository: _backupRepository,
+              shareService: _shareService,
+              filePickerService: _filePickerService,
+            ),
           ),
         ],
         child: MaterialApp(

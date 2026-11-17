@@ -1,5 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../backup/presentation/pages/data_management_page.dart';
+import '../../../accounts/presentation/cubit/accounts_cubit.dart';
+import '../../../budgets/presentation/cubit/budgets_cubit.dart';
+import '../../../categories/presentation/cubit/categories_cubit.dart';
+import '../../../reports/presentation/cubit/reports_cubit.dart';
+import '../../../savings_goals/presentation/cubit/savings_goals_cubit.dart';
+import '../../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../cubit/security_cubit.dart';
 import '../cubit/security_state.dart';
 
@@ -313,6 +320,44 @@ class SecuritySettingsPage extends StatelessWidget {
                       ),
                     ],
                   ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
+                ),
+                child: ListTile(
+                  leading: const Icon(Icons.backup_outlined),
+                  title: const Text(
+                    'Data Backup & Export',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text('Export snapshots, restore from backup, or export CSV'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => DataManagementPage(
+                          onRestoreCompleted: () {
+                            try {
+                              context.read<AccountsCubit>().loadAccounts();
+                              context.read<CategoriesCubit>().loadCategories();
+                              context.read<TransactionsCubit>().loadTransactions();
+                              context.read<BudgetsCubit>().loadBudgets();
+                              context.read<SavingsGoalsCubit>().loadGoals();
+                              context.read<ReportsCubit>().loadReports();
+                            } catch (_) {
+                              // If any cubit is not available in tree
+                            }
+                          },
+                        ),
+                      ),
+                    );
+                  },
                 ),
               ),
             ],
