@@ -6,6 +6,9 @@ import 'features/accounts/data/repositories/account_repository_impl.dart';
 import 'features/accounts/domain/repositories/account_repository.dart';
 import 'features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'features/app/presentation/app_shell.dart';
+import 'features/budgets/data/repositories/budget_repository_impl.dart';
+import 'features/budgets/domain/repositories/budget_repository.dart';
+import 'features/budgets/presentation/cubit/budgets_cubit.dart';
 import 'features/categories/data/repositories/category_repository_impl.dart';
 import 'features/categories/domain/repositories/category_repository.dart';
 import 'features/categories/presentation/cubit/categories_cubit.dart';
@@ -23,6 +26,7 @@ class BudgetTrackerApp extends StatefulWidget {
   final AccountRepository? accountRepository;
   final CategoryRepository? categoryRepository;
   final TransactionRepository? transactionRepository;
+  final BudgetRepository? budgetRepository;
 
   const BudgetTrackerApp({
     super.key,
@@ -30,6 +34,7 @@ class BudgetTrackerApp extends StatefulWidget {
     this.accountRepository,
     this.categoryRepository,
     this.transactionRepository,
+    this.budgetRepository,
   });
 
   @override
@@ -41,6 +46,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
   late final AccountRepository _accountRepository;
   late final CategoryRepository _categoryRepository;
   late final TransactionRepository _transactionRepository;
+  late final BudgetRepository _budgetRepository;
   bool _isLocalDb = false;
 
   @override
@@ -56,6 +62,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _accountRepository = widget.accountRepository ?? AccountRepositoryImpl(_database);
     _categoryRepository = widget.categoryRepository ?? CategoryRepositoryImpl(_database);
     _transactionRepository = widget.transactionRepository ?? TransactionRepositoryImpl(_database);
+    _budgetRepository = widget.budgetRepository ?? BudgetRepositoryImpl(_database);
 
     _database.seedDefaultCategoriesIfEmpty();
   }
@@ -76,6 +83,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
         RepositoryProvider<AccountRepository>.value(value: _accountRepository),
         RepositoryProvider<CategoryRepository>.value(value: _categoryRepository),
         RepositoryProvider<TransactionRepository>.value(value: _transactionRepository),
+        RepositoryProvider<BudgetRepository>.value(value: _budgetRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -90,6 +98,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
               transactionRepository: _transactionRepository,
               categoryRepository: _categoryRepository,
             )..loadTransactions(),
+          ),
+          BlocProvider<BudgetsCubit>(
+            create: (context) => BudgetsCubit(_budgetRepository)..loadBudgets(),
           ),
         ],
         child: MaterialApp(

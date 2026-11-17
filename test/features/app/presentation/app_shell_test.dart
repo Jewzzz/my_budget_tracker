@@ -8,6 +8,9 @@ import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
 import 'package:my_budget_tracker/features/app/presentation/app_shell.dart';
+import 'package:my_budget_tracker/features/budgets/presentation/pages/budgets_page.dart';
+import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_cubit.dart';
+import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_state.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
@@ -16,17 +19,20 @@ import 'package:my_budget_tracker/features/transactions/presentation/cubit/trans
 class MockAccountsCubit extends MockCubit<AccountsState> implements AccountsCubit {}
 class MockTransactionsCubit extends MockCubit<TransactionsState> implements TransactionsCubit {}
 class MockCategoriesCubit extends MockCubit<CategoriesState> implements CategoriesCubit {}
+class MockBudgetsCubit extends MockCubit<BudgetsState> implements BudgetsCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
     late AccountsCubit accountsCubit;
     late TransactionsCubit transactionsCubit;
     late CategoriesCubit categoriesCubit;
+    late BudgetsCubit budgetsCubit;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
       transactionsCubit = MockTransactionsCubit();
       categoriesCubit = MockCategoriesCubit();
+      budgetsCubit = MockBudgetsCubit();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -46,6 +52,10 @@ void main() {
       when(() => categoriesCubit.state).thenReturn(
         const CategoriesLoaded(categories: []),
       );
+
+      when(() => budgetsCubit.state).thenReturn(
+        const BudgetsLoaded(year: 2026, month: 5, budgets: []),
+      );
     });
 
     Widget buildTestApp({ThemeMode themeMode = ThemeMode.light}) {
@@ -58,6 +68,7 @@ void main() {
             BlocProvider<AccountsCubit>.value(value: accountsCubit),
             BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
             BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
+            BlocProvider<BudgetsCubit>.value(value: budgetsCubit),
           ],
           child: const AppShell(),
         ),
@@ -97,7 +108,7 @@ void main() {
       await tester.tap(find.text('Budgets'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Budgets'), findsOneWidget);
-      expect(find.text('Budgets View'), findsOneWidget);
+      expect(find.byType(BudgetsPage), findsOneWidget);
 
       // Tap Goals
       await tester.tap(find.text('Goals'));

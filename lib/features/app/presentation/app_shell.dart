@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../accounts/presentation/cubit/accounts_cubit.dart';
+import '../../budgets/presentation/pages/budgets_page.dart';
 import '../../categories/presentation/cubit/categories_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
@@ -54,7 +55,7 @@ class _AppShellState extends State<AppShell> {
       label: 'Budgets',
       icon: Icons.pie_chart_outline,
       selectedIcon: Icons.pie_chart,
-      view: Center(child: Text('Budgets View')),
+      view: BudgetsPage(),
     ),
     _AppTabItem(
       title: 'Savings Goals',
