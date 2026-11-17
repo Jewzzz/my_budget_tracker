@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 
+import '../../dashboard/presentation/pages/dashboard_page.dart';
+
 class _AppTabItem {
   final String title;
   final String label;
@@ -32,7 +34,7 @@ class _AppShellState extends State<AppShell> {
       label: 'Dashboard',
       icon: Icons.dashboard_outlined,
       selectedIcon: Icons.dashboard,
-      view: Center(child: Text('Dashboard View')),
+      view: DashboardPage(),
     ),
     _AppTabItem(
       title: 'Transactions',
