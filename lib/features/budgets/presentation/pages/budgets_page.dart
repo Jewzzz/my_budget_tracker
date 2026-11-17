@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../categories/presentation/cubit/categories_cubit.dart';
 import '../../domain/entities/category_budget_overview.dart';
 import '../cubit/budgets_cubit.dart';
@@ -70,20 +73,28 @@ class BudgetsPage extends StatelessWidget {
             children: [
               // Calendar Month Switcher Header (< May 2026 >)
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: AppSpacing.lg,
+                  vertical: AppSpacing.sm,
+                ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    IconButton(
+                    IconButton.filledTonal(
                       icon: const Icon(Icons.chevron_left),
                       tooltip: 'Previous Month',
+                      style: IconButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.smBorder,
+                        ),
+                      ),
                       onPressed: () => context.read<BudgetsCubit>().previousMonth(),
                     ),
                     Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         const Icon(Icons.calendar_today_outlined, size: 18),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: AppSpacing.sm),
                         Text(
                           formattedMonth,
                           style: theme.textTheme.titleMedium?.copyWith(
@@ -92,9 +103,14 @@ class BudgetsPage extends StatelessWidget {
                         ),
                       ],
                     ),
-                    IconButton(
+                    IconButton.filledTonal(
                       icon: const Icon(Icons.chevron_right),
                       tooltip: 'Next Month',
+                      style: IconButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.smBorder,
+                        ),
+                      ),
                       onPressed: () => context.read<BudgetsCubit>().nextMonth(),
                     ),
                   ],
@@ -104,63 +120,38 @@ class BudgetsPage extends StatelessWidget {
               // Overview Banner
               if (state is BudgetsLoaded)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
                   child: BudgetOverviewBanner(
                     totalBudgeted: state.totalBudgeted,
                     totalSpent: state.totalSpent,
                     netRemaining: state.netRemaining,
                   ),
                 ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
               // Category Budgets List or Empty State
               Expanded(
                 child: budgets.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.pie_chart_outline,
-                                size: 64,
-                                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No Budgets for $formattedMonth',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Set spending limits for your expense categories to keep spending on track.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => _openSetBudgetSheet(
-                                  context,
-                                  year: year,
-                                  month: month,
-                                  existingCategoryIds: existingCategoryIds,
-                                ),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Set First Budget'),
-                              ),
-                            ],
-                          ),
+                    ? AppEmptyState(
+                        icon: Icons.pie_chart_outline,
+                        title: 'No Budgets for $formattedMonth',
+                        message:
+                            'Set spending limits for your expense categories to keep spending on track.',
+                        actionLabel: 'Set First Budget',
+                        onAction: () => _openSetBudgetSheet(
+                          context,
+                          year: year,
+                          month: month,
+                          existingCategoryIds: existingCategoryIds,
                         ),
                       )
                     : ListView.separated(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.xs,
+                        ),
                         itemCount: budgets.length,
-                        separatorBuilder: (_, _) => const SizedBox(height: 12),
+                        separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.md),
                         itemBuilder: (context, index) {
                           final overview = budgets[index];
                           return CategoryBudgetCard(

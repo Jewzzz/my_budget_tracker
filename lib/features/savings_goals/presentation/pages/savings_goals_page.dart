@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../domain/entities/savings_goal.dart';
@@ -64,114 +69,109 @@ class SavingsGoalsPage extends StatelessWidget {
   Widget _buildSummaryBanner(BuildContext context, List<SavingsGoal> activeGoals) {
     final theme = Theme.of(context);
 
-    int totalSavedMinor = 0;
-    int totalTargetMinor = 0;
+    var totalSaved = Money.zero;
+    var totalTarget = Money.zero;
 
     for (final g in activeGoals) {
-      totalSavedMinor += g.savedAmount.minorUnits;
-      totalTargetMinor += g.targetAmount.minorUnits;
+      totalSaved += g.savedAmount;
+      totalTarget += g.targetAmount;
     }
 
-    final totalSaved = Money(totalSavedMinor);
-    final totalTarget = Money(totalTargetMinor);
-    final remainingMinor = (totalTargetMinor - totalSavedMinor).clamp(0, totalTargetMinor);
-    final remaining = Money(remainingMinor);
-    final progress = totalTargetMinor > 0 ? (totalSavedMinor / totalTargetMinor).clamp(0.0, 1.0) : 0.0;
+    final remaining = (totalTarget - totalSaved).isNegative
+        ? Money.zero
+        : totalTarget - totalSaved;
+    final progress = totalTarget.isPositive
+        ? (totalSaved.minorUnits / totalTarget.minorUnits).clamp(0.0, 1.0)
+        : 0.0;
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Saved',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      color: theme.colorScheme.surfaceContainerHighest.withAlpha(70),
+      child: Column(
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Saved',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      totalSaved.format(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.income,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  MoneyText(
+                    amount: totalSaved,
+                    color: AppColors.income,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Text(
-                      'Target',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.center,
+                children: [
+                  Text(
+                    'Target',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      totalTarget.format(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  MoneyText(
+                    amount: totalTarget,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Text(
-                      'Remaining',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                ],
+              ),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    'Remaining',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
                     ),
-                    const SizedBox(height: 2),
-                    Text(
-                      remaining.format(),
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
+                  ),
+                  const SizedBox(height: 2),
+                  MoneyText(
+                    amount: remaining,
+                    color: theme.colorScheme.onSurfaceVariant,
+                    style: theme.textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.bold,
                     ),
-                  ],
-                ),
-              ],
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.md),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(4),
+            child: LinearProgressIndicator(
+              value: progress,
+              minHeight: 8,
+              color: AppColors.income,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest,
             ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(4),
-              child: LinearProgressIndicator(
-                value: progress,
-                minHeight: 8,
+          ),
+          const SizedBox(height: 6),
+          Align(
+            alignment: Alignment.centerRight,
+            child: Text(
+              '${(progress * 100).toStringAsFixed(0)}% reached',
+              style: theme.textTheme.bodySmall?.copyWith(
+                fontWeight: FontWeight.w600,
                 color: AppColors.income,
-                backgroundColor: theme.colorScheme.surfaceContainerHighest,
               ),
             ),
-            const SizedBox(height: 6),
-            Align(
-              alignment: Alignment.centerRight,
-              child: Text(
-                '${(progress * 100).toStringAsFixed(0)}% reached',
-                style: theme.textTheme.bodySmall?.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.income,
-                ),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -196,21 +196,46 @@ class SavingsGoalsPage extends StatelessWidget {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final activeGoals = state is SavingsGoalsLoaded ? state.activeGoals : <SavingsGoal>[];
-        final completedGoals = state is SavingsGoalsLoaded ? state.completedGoals : <SavingsGoal>[];
+        final activeGoals =
+            state is SavingsGoalsLoaded ? state.activeGoals : <SavingsGoal>[];
+        final completedGoals =
+            state is SavingsGoalsLoaded ? state.completedGoals : <SavingsGoal>[];
 
         return DefaultTabController(
           length: 2,
           child: Scaffold(
             appBar: PreferredSize(
-              preferredSize: const Size.fromHeight(kToolbarHeight),
-              child: Container(
-                color: theme.scaffoldBackgroundColor,
-                child: TabBar(
-                  tabs: [
-                    Tab(text: 'Active (${activeGoals.length})'),
-                    Tab(text: 'Completed (${completedGoals.length})'),
-                  ],
+              preferredSize: const Size.fromHeight(48),
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 4),
+                child: Container(
+                  height: 40,
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
+                    borderRadius: AppRadius.mdBorder,
+                  ),
+                  child: TabBar(
+                    dividerColor: Colors.transparent,
+                    indicatorSize: TabBarIndicatorSize.tab,
+                    indicator: BoxDecoration(
+                      color: theme.colorScheme.surface,
+                      borderRadius: AppRadius.mdBorder,
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withAlpha(15),
+                          blurRadius: 4,
+                          offset: const Offset(0, 1),
+                        ),
+                      ],
+                    ),
+                    labelColor: theme.colorScheme.onSurface,
+                    unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                    labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                    tabs: [
+                      Tab(text: 'Active (${activeGoals.length})'),
+                      Tab(text: 'Completed (${completedGoals.length})'),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -218,54 +243,33 @@ class SavingsGoalsPage extends StatelessWidget {
               children: [
                 // Active Goals Tab
                 activeGoals.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.savings_outlined,
-                                size: 64,
-                                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No Active Goals',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Create your first savings goal and start setting money aside.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                              const SizedBox(height: 16),
-                              FilledButton.icon(
-                                onPressed: () => _openCreateGoal(context),
-                                icon: const Icon(Icons.add),
-                                label: const Text('Create First Goal'),
-                              ),
-                            ],
-                          ),
-                        ),
+                    ? AppEmptyState(
+                        icon: Icons.savings_outlined,
+                        title: 'No Active Goals',
+                        message:
+                            'Create your first savings goal and start setting money aside.',
+                        actionLabel: 'Create First Goal',
+                        onAction: () => _openCreateGoal(context),
                       )
                     : ListView(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
                         children: [
                           _buildSummaryBanner(context, activeGoals),
-                          const SizedBox(height: 16),
+                          const SizedBox(height: AppSpacing.md),
                           ...activeGoals.map(
                             (goal) => Padding(
-                              padding: const EdgeInsets.only(bottom: 12),
+                              padding: const EdgeInsets.only(bottom: AppSpacing.md),
                               child: GoalCard(
                                 goal: goal,
-                                onDeposit: () => _openDepositWithdraw(context, goal, isDeposit: true),
-                                onWithdraw: () => _openDepositWithdraw(context, goal, isDeposit: false),
+                                onDeposit: () =>
+                                    _openDepositWithdraw(context, goal, isDeposit: true),
+                                onWithdraw: () =>
+                                    _openDepositWithdraw(context, goal, isDeposit: false),
+                                onArchive: () =>
+                                    context.read<SavingsGoalsCubit>().markCompleted(goal.id, true),
                                 onTap: () => _openGoalDetails(context, goal),
                               ),
                             ),
@@ -275,47 +279,28 @@ class SavingsGoalsPage extends StatelessWidget {
 
                 // Completed Goals Tab
                 completedGoals.isEmpty
-                    ? Center(
-                        child: Padding(
-                          padding: const EdgeInsets.all(32),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.check_circle_outline,
-                                size: 64,
-                                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
-                              ),
-                              const SizedBox(height: 16),
-                              Text(
-                                'No Completed Goals',
-                                style: theme.textTheme.titleMedium?.copyWith(
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 8),
-                              Text(
-                                'Keep saving! Goals you mark completed will appear here.',
-                                textAlign: TextAlign.center,
-                                style: theme.textTheme.bodyMedium?.copyWith(
-                                  color: theme.colorScheme.onSurfaceVariant,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
+                    ? const AppEmptyState(
+                        icon: Icons.check_circle_outline,
+                        title: 'No Completed Goals',
+                        message:
+                            'Keep saving! Goals you mark completed will appear here.',
                       )
                     : ListView.builder(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: AppSpacing.lg,
+                          vertical: AppSpacing.md,
+                        ),
                         itemCount: completedGoals.length,
                         itemBuilder: (context, index) {
                           final goal = completedGoals[index];
                           return Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
+                            padding: const EdgeInsets.only(bottom: AppSpacing.md),
                             child: GoalCard(
                               goal: goal,
-                              onDeposit: () => _openDepositWithdraw(context, goal, isDeposit: true),
-                              onWithdraw: () => _openDepositWithdraw(context, goal, isDeposit: false),
+                              onDeposit: () =>
+                                  _openDepositWithdraw(context, goal, isDeposit: true),
+                              onWithdraw: () =>
+                                  _openDepositWithdraw(context, goal, isDeposit: false),
                               onTap: () => _openGoalDetails(context, goal),
                             ),
                           );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 
 class BudgetOverviewBanner extends StatelessWidget {
@@ -22,43 +25,75 @@ class BudgetOverviewBanner extends StatelessWidget {
         ? AppColors.expense
         : (netRemaining.isZero ? theme.colorScheme.onSurfaceVariant : AppColors.income);
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surfaceContainerHighest.withAlpha(90),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: theme.colorScheme.outlineVariant.withAlpha(80),
-        ),
-      ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
+    final double percentage = totalBudgeted.minorUnits > 0
+        ? (totalSpent.minorUnits / totalBudgeted.minorUnits).clamp(0.0, 5.0)
+        : 0.0;
+
+    final progressColor = percentage > 1.0
+        ? AppColors.expense
+        : (percentage >= 0.8 ? AppColors.savings : AppColors.income);
+
+    return AppCard(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.md),
+      color: theme.colorScheme.surfaceContainerHighest.withAlpha(70),
+      child: Column(
         children: [
-          _StatColumn(
-            label: 'Total Budgeted',
-            amount: totalBudgeted.format(),
-            color: theme.colorScheme.onSurface,
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _StatColumn(
+                label: 'Total Budgeted',
+                amount: totalBudgeted,
+                color: theme.colorScheme.onSurface,
+              ),
+              Container(
+                height: 36,
+                width: 1,
+                color: theme.colorScheme.outlineVariant.withAlpha(120),
+              ),
+              _StatColumn(
+                label: 'Total Spent',
+                amount: totalSpent,
+                color: totalSpent.isPositive ? AppColors.expense : theme.colorScheme.onSurface,
+              ),
+              Container(
+                height: 36,
+                width: 1,
+                color: theme.colorScheme.outlineVariant.withAlpha(120),
+              ),
+              _StatColumn(
+                label: isNegative ? 'Over Budget' : 'Remaining',
+                amount: isNegative ? netRemaining.abs() : netRemaining,
+                color: remainingColor,
+              ),
+            ],
           ),
-          Container(
-            height: 36,
-            width: 1,
-            color: theme.colorScheme.outlineVariant.withAlpha(120),
-          ),
-          _StatColumn(
-            label: 'Total Spent',
-            amount: totalSpent.format(),
-            color: totalSpent.isPositive ? AppColors.expense : theme.colorScheme.onSurface,
-          ),
-          Container(
-            height: 36,
-            width: 1,
-            color: theme.colorScheme.outlineVariant.withAlpha(120),
-          ),
-          _StatColumn(
-            label: isNegative ? 'Over Budget' : 'Remaining',
-            amount: isNegative ? netRemaining.abs().format() : netRemaining.format(),
-            color: remainingColor,
-          ),
+          if (totalBudgeted.isPositive) ...[
+            const SizedBox(height: AppSpacing.md),
+            Row(
+              children: [
+                Expanded(
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: percentage.clamp(0.0, 1.0),
+                      minHeight: 6,
+                      color: progressColor,
+                      backgroundColor: progressColor.withAlpha(35),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: AppSpacing.sm),
+                Text(
+                  '${(percentage * 100).toStringAsFixed(0)}% used',
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: progressColor,
+                  ),
+                ),
+              ],
+            ),
+          ],
         ],
       ),
     );
@@ -67,7 +102,7 @@ class BudgetOverviewBanner extends StatelessWidget {
 
 class _StatColumn extends StatelessWidget {
   final String label;
-  final String amount;
+  final Money amount;
   final Color color;
 
   const _StatColumn({
@@ -88,11 +123,11 @@ class _StatColumn extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 4),
-        Text(
-          amount,
+        MoneyText(
+          amount: amount,
+          color: color,
           style: theme.textTheme.titleMedium?.copyWith(
             fontWeight: FontWeight.bold,
-            color: color,
           ),
         ),
       ],
