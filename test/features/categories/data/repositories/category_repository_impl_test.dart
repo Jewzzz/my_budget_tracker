@@ -73,14 +73,65 @@ void main() {
       expect(retrieved, isNull);
     });
 
-    test('throws DefaultCategoryCannotBeDeletedFailure when attempting to delete default category', () async {
+    test('deletes default category when no transactions reference it', () async {
       final defaultCategories = await categoryRepository.getCategories();
       expect(defaultCategories, isNotEmpty);
       final defaultCat = defaultCategories.firstWhere((c) => c.isDefault);
 
+      await categoryRepository.deleteCategory(defaultCat.id);
+
+      final retrieved = await categoryRepository.getCategoryById(defaultCat.id);
+      expect(retrieved, isNull);
+    });
+
+    test('updates default category name, icon, and color', () async {
+      final defaultCategories = await categoryRepository.getCategories();
+      final defaultCat = defaultCategories.firstWhere((c) => c.isDefault);
+
+      final updated = defaultCat.copyWith(
+        name: 'Supermarket Groceries',
+        icon: 'local_cafe',
+        color: 0xFFEF4444,
+      );
+
+      await categoryRepository.updateCategory(updated);
+
+      final retrieved = await categoryRepository.getCategoryById(defaultCat.id);
+      expect(retrieved!.name, 'Supermarket Groceries');
+      expect(retrieved.icon, 'local_cafe');
+      expect(retrieved.color, 0xFFEF4444);
+    });
+
+    test('throws CategoryHasTransactionsFailure when attempting to delete default category in use by transactions', () async {
+      final defaultCategories = await categoryRepository.getCategories();
+      final defaultCat = defaultCategories.firstWhere((c) => c.isDefault);
+
+      final account = Account(
+        id: 'acc-def-1',
+        name: 'Checking',
+        type: AccountType.checking,
+        initialBalance: const Money(50000),
+        currentBalance: const Money(50000),
+        icon: 'account_balance',
+        color: 0xFF1E3A8A,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+      await accountRepository.createAccount(account);
+
+      final txn = Transaction(
+        id: 'txn-def-1',
+        accountId: account.id,
+        type: TransactionType.expense,
+        amount: const Money(2500),
+        categoryId: defaultCat.id,
+        date: DateTime.utc(2026, 5, 1),
+        createdAt: DateTime.utc(2026, 5, 1),
+      );
+      await transactionRepository.createTransaction(txn);
+
       expect(
         () => categoryRepository.deleteCategory(defaultCat.id),
-        throwsA(isA<DefaultCategoryCannotBeDeletedFailure>()),
+        throwsA(isA<CategoryHasTransactionsFailure>()),
       );
     });
 

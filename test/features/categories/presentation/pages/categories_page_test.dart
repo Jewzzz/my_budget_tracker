@@ -47,7 +47,7 @@ void main() {
       );
     }
 
-    testWidgets('renders categories partitioned with default and custom categories', (tester) async {
+    testWidgets('renders categories with edit and delete options for all categories', (tester) async {
       when(() => categoriesCubit.state).thenReturn(
         CategoriesLoaded(categories: [defaultCategory, customCategory]),
       );
@@ -56,7 +56,25 @@ void main() {
 
       expect(find.text('Groceries'), findsOneWidget);
       expect(find.text('Books & Courses'), findsOneWidget);
-      expect(find.text('Default'), findsOneWidget); // Default chip
+      expect(find.byIcon(Icons.edit_outlined), findsNWidgets(2));
+      expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
+    });
+
+    testWidgets('shows delete confirmation dialog when deleting default category', (tester) async {
+      when(() => categoriesCubit.state).thenReturn(
+        CategoriesLoaded(categories: [defaultCategory]),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      final deleteBtn = find.byIcon(Icons.delete_outline);
+      expect(deleteBtn, findsOneWidget);
+
+      await tester.tap(deleteBtn);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Delete Category?'), findsOneWidget);
+      expect(find.text('Are you sure you want to delete "Groceries"?'), findsOneWidget);
     });
 
     testWidgets('shows delete confirmation dialog when deleting custom category', (tester) async {

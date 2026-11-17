@@ -346,25 +346,16 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
           trailing: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (cat.isDefault)
-                Chip(
-                  label: const Text('Default', style: TextStyle(fontSize: 11)),
-                  visualDensity: VisualDensity.compact,
-                  padding: EdgeInsets.zero,
-                  backgroundColor: Theme.of(context).colorScheme.surfaceContainerHighest,
-                )
-              else ...[
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  tooltip: 'Edit',
-                  onPressed: () => _openCategoryDialog(existingCategory: cat),
-                ),
-                IconButton(
-                  icon: Icon(Icons.delete_outline, size: 20, color: Theme.of(context).colorScheme.error),
-                  tooltip: 'Delete',
-                  onPressed: () => _confirmDelete(context, cat),
-                ),
-              ],
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 20),
+                tooltip: 'Edit',
+                onPressed: () => _openCategoryDialog(existingCategory: cat),
+              ),
+              IconButton(
+                icon: Icon(Icons.delete_outline, size: 20, color: Theme.of(context).colorScheme.error),
+                tooltip: 'Delete',
+                onPressed: () => _confirmDelete(context, cat),
+              ),
             ],
           ),
         );

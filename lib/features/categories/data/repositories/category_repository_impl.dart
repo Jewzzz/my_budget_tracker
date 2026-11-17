@@ -66,9 +66,6 @@ class CategoryRepositoryImpl implements CategoryRepository {
   Future<void> deleteCategory(String id) async {
     final category = await (database.select(database.categories)..where((tbl) => tbl.id.equals(id))).getSingleOrNull();
     if (category == null) return;
-    if (category.isDefault) {
-      throw const DefaultCategoryCannotBeDeletedFailure();
-    }
 
     try {
       await (database.delete(database.categories)..where((tbl) => tbl.id.equals(id))).go();
