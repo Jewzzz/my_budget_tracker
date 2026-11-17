@@ -11,7 +11,13 @@ import 'package:my_budget_tracker/features/categories/presentation/pages/categor
 
 class MockCategoriesCubit extends MockCubit<CategoriesState> implements CategoriesCubit {}
 
+class FakeCategory extends Fake implements Category {}
+
 void main() {
+  setUpAll(() {
+    registerFallbackValue(FakeCategory());
+  });
+
   group('CategoriesPage Widget Tests', () {
     late CategoriesCubit categoriesCubit;
 
@@ -30,6 +36,15 @@ void main() {
       type: CategoryType.expense,
       icon: 'menu_book',
       color: 0xFF8B5CF6,
+      isDefault: false,
+    );
+
+    final incomeCategory = Category(
+      id: 'cat-freelance',
+      name: 'Freelance Design',
+      type: CategoryType.income,
+      icon: 'trending_up',
+      color: 0xFF3B82F6,
       isDefault: false,
     );
 
@@ -58,6 +73,23 @@ void main() {
       expect(find.text('Books & Courses'), findsOneWidget);
       expect(find.byIcon(Icons.edit_outlined), findsNWidgets(2));
       expect(find.byIcon(Icons.delete_outline), findsNWidgets(2));
+    });
+
+    testWidgets('switches to Income tab and renders income categories', (tester) async {
+      when(() => categoriesCubit.state).thenReturn(
+        CategoriesLoaded(categories: [defaultCategory, incomeCategory]),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Freelance Design'), findsNothing);
+
+      await tester.tap(find.text('Income'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Freelance Design'), findsOneWidget);
+      expect(find.text('Groceries'), findsNothing);
     });
 
     testWidgets('shows delete confirmation dialog when deleting default category', (tester) async {
@@ -94,10 +126,11 @@ void main() {
       expect(find.text('Are you sure you want to delete "Books & Courses"?'), findsOneWidget);
     });
 
-    testWidgets('opens category creation dialog on FAB tap', (tester) async {
+    testWidgets('opens category creation dialog on FAB tap and creates category', (tester) async {
       when(() => categoriesCubit.state).thenReturn(
         const CategoriesLoaded(categories: []),
       );
+      when(() => categoriesCubit.createCategory(any())).thenAnswer((_) async {});
 
       await tester.pumpWidget(buildTestWidget());
 
@@ -107,6 +140,15 @@ void main() {
       expect(find.text('New Category'), findsOneWidget);
       expect(find.text('Category Name'), findsOneWidget);
       expect(find.text('Create'), findsOneWidget);
+
+      final nameField = find.byType(TextField);
+      await tester.enterText(nameField, 'Subscriptions');
+      await tester.pump();
+
+      await tester.tap(find.text('Create'));
+      await tester.pumpAndSettle();
+
+      verify(() => categoriesCubit.createCategory(any())).called(1);
     });
   });
 }

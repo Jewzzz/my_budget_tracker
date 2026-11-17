@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/category.dart';
 import '../cubit/categories_cubit.dart';
 import '../cubit/categories_state.dart';
@@ -59,46 +64,8 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
     super.dispose();
   }
 
-  IconData _getIconData(String iconName) {
-    switch (iconName) {
-      case 'shopping_cart':
-        return Icons.shopping_cart_outlined;
-      case 'home':
-        return Icons.home_outlined;
-      case 'restaurant':
-        return Icons.restaurant_outlined;
-      case 'directions_car':
-        return Icons.directions_car_outlined;
-      case 'bolt':
-        return Icons.bolt_outlined;
-      case 'movie':
-        return Icons.movie_outlined;
-      case 'local_hospital':
-        return Icons.local_hospital_outlined;
-      case 'work':
-        return Icons.work_outlined;
-      case 'trending_up':
-        return Icons.trending_up_outlined;
-      case 'card_giftcard':
-        return Icons.card_giftcard_outlined;
-      case 'school':
-        return Icons.school_outlined;
-      case 'menu_book':
-        return Icons.menu_book_outlined;
-      case 'flight':
-        return Icons.flight_outlined;
-      case 'pets':
-        return Icons.pets_outlined;
-      case 'fitness_center':
-        return Icons.fitness_center_outlined;
-      case 'local_cafe':
-        return Icons.local_cafe_outlined;
-      default:
-        return Icons.category_outlined;
-    }
-  }
-
   void _openCategoryDialog({Category? existingCategory, CategoryType? defaultType}) {
+    final cubit = context.read<CategoriesCubit>();
     final isEditing = existingCategory != null;
     final nameController = TextEditingController(text: existingCategory?.name ?? '');
     CategoryType selectedType = existingCategory?.type ?? defaultType ?? CategoryType.expense;
@@ -109,7 +76,10 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
       context: context,
       builder: (dialogCtx) => StatefulBuilder(
         builder: (context, setDialogState) {
+          final theme = Theme.of(context);
+
           return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
             title: Text(isEditing ? 'Edit Category' : 'New Category'),
             content: SingleChildScrollView(
               child: Column(
@@ -118,15 +88,17 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
                 children: [
                   TextField(
                     controller: nameController,
-                    decoration: const InputDecoration(
+                    decoration: InputDecoration(
                       labelText: 'Category Name',
-                      border: OutlineInputBorder(),
+                      border: OutlineInputBorder(
+                        borderRadius: AppRadius.mdBorder,
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   if (!isEditing) ...[
                     const Text('Type', style: TextStyle(fontWeight: FontWeight.bold)),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: AppSpacing.sm),
                     SegmentedButton<CategoryType>(
                       segments: const [
                         ButtonSegment(value: CategoryType.expense, label: Text('Expense')),
@@ -137,41 +109,48 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
                         setDialogState(() => selectedType = set.first);
                       },
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: AppSpacing.lg),
                   ],
                   const Text('Icon', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: availableIcons.map((iconName) {
                       final isSelected = iconName == selectedIcon;
                       return InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.card),
                         onTap: () => setDialogState(() => selectedIcon = iconName),
                         child: Container(
-                          padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(
-                              color: isSelected ? Theme.of(context).colorScheme.primary : Colors.grey.shade300,
-                              width: isSelected ? 2 : 1,
+                              color: isSelected ? theme.colorScheme.primary : Colors.transparent,
+                              width: 2,
                             ),
-                            color: isSelected ? Theme.of(context).colorScheme.primary.withAlpha(30) : null,
                           ),
-                          child: Icon(_getIconData(iconName), size: 20),
+                          padding: const EdgeInsets.all(2),
+                          child: CategoryIconBadge(
+                            iconName: iconName,
+                            color: isSelected
+                                ? theme.colorScheme.primary
+                                : theme.colorScheme.onSurfaceVariant,
+                            size: CategoryBadgeSize.medium,
+                          ),
                         ),
                       );
                     }).toList(),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   const Text('Color', style: TextStyle(fontWeight: FontWeight.bold)),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   Wrap(
-                    spacing: 8,
-                    runSpacing: 8,
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
                     children: availableColors.map((colorValue) {
                       final isSelected = colorValue == selectedColor;
                       return InkWell(
+                        borderRadius: BorderRadius.circular(AppRadius.card),
                         onTap: () => setDialogState(() => selectedColor = colorValue),
                         child: Container(
                           width: 32,
@@ -180,7 +159,7 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
                             color: Color(colorValue),
                             shape: BoxShape.circle,
                             border: isSelected
-                                ? Border.all(color: Colors.black, width: 2.5)
+                                ? Border.all(color: theme.colorScheme.onSurface, width: 2.5)
                                 : null,
                           ),
                           child: isSelected
@@ -209,7 +188,7 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
                       icon: selectedIcon,
                       color: selectedColor,
                     );
-                    context.read<CategoriesCubit>().updateCategory(updated);
+                    cubit.updateCategory(updated);
                   } else {
                     final newCategory = Category(
                       id: const Uuid().v4(),
@@ -219,7 +198,7 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
                       color: selectedColor,
                       isDefault: false,
                     );
-                    context.read<CategoriesCubit>().createCategory(newCategory);
+                    cubit.createCategory(newCategory);
                   }
                   Navigator.pop(dialogCtx);
                 },
@@ -233,9 +212,11 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
   }
 
   void _confirmDelete(BuildContext context, Category category) {
+    final cubit = context.read<CategoriesCubit>();
     showDialog(
       context: context,
       builder: (dialogCtx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
         title: const Text('Delete Category?'),
         content: Text('Are you sure you want to delete "${category.name}"?'),
         actions: [
@@ -249,7 +230,7 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
             ),
             onPressed: () {
               Navigator.pop(dialogCtx);
-              context.read<CategoriesCubit>().deleteCategory(category.id);
+              cubit.deleteCategory(category.id);
             },
             child: const Text('Delete'),
           ),
@@ -265,12 +246,41 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
     return Scaffold(
       appBar: AppBar(
         title: const Text('Categories'),
-        bottom: TabBar(
-          controller: _tabController,
-          tabs: const [
-            Tab(text: 'Expense'),
-            Tab(text: 'Income'),
-          ],
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: 4),
+            child: Container(
+              height: 40,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
+                borderRadius: AppRadius.mdBorder,
+              ),
+              child: TabBar(
+                controller: _tabController,
+                dividerColor: Colors.transparent,
+                indicatorSize: TabBarIndicatorSize.tab,
+                indicator: BoxDecoration(
+                  color: theme.colorScheme.surface,
+                  borderRadius: AppRadius.mdBorder,
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withAlpha(15),
+                      blurRadius: 4,
+                      offset: const Offset(0, 1),
+                    ),
+                  ],
+                ),
+                labelColor: theme.colorScheme.onSurface,
+                unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                labelStyle: const TextStyle(fontWeight: FontWeight.w600),
+                tabs: const [
+                  Tab(text: 'Expense'),
+                  Tab(text: 'Income'),
+                ],
+              ),
+            ),
+          ),
         ),
       ),
       body: BlocConsumer<CategoriesCubit, CategoriesState>(
@@ -289,8 +299,10 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
             return const Center(child: CircularProgressIndicator());
           }
 
-          final expenseCategories = state is CategoriesLoaded ? state.expenseCategories : <Category>[];
-          final incomeCategories = state is CategoriesLoaded ? state.incomeCategories : <Category>[];
+          final expenseCategories =
+              state is CategoriesLoaded ? state.expenseCategories : <Category>[];
+          final incomeCategories =
+              state is CategoriesLoaded ? state.incomeCategories : <Category>[];
 
           return TabBarView(
             controller: _tabController,
@@ -304,7 +316,8 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
       floatingActionButton: FloatingActionButton(
         tooltip: 'Add Category',
         onPressed: () {
-          final defaultType = _tabController.index == 0 ? CategoryType.expense : CategoryType.income;
+          final defaultType =
+              _tabController.index == 0 ? CategoryType.expense : CategoryType.income;
           _openCategoryDialog(defaultType: defaultType);
         },
         child: const Icon(Icons.add),
@@ -314,45 +327,93 @@ class _CategoriesPageState extends State<CategoriesPage> with SingleTickerProvid
 
   Widget _buildCategoryList(List<Category> categories, CategoryType type) {
     if (categories.isEmpty) {
-      return Center(
-        child: Text(
-          'No ${type.name} categories found.',
-          style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
-        ),
+      return AppEmptyState(
+        icon: Icons.category_outlined,
+        title: 'No ${type.name} Categories',
+        message: 'Tap the + button to add your first ${type.name.toLowerCase()} category.',
+        actionLabel: 'Add Category',
+        onAction: () => _openCategoryDialog(defaultType: type),
       );
     }
 
+    final theme = Theme.of(context);
+
     return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.md,
+      ),
       itemCount: categories.length,
-      separatorBuilder: (_, _) => const Divider(height: 1),
+      separatorBuilder: (_, _) => const SizedBox(height: AppSpacing.sm),
       itemBuilder: (context, index) {
         final cat = categories[index];
         final color = Color(cat.color);
 
-        return ListTile(
-          contentPadding: const EdgeInsets.symmetric(vertical: 4),
-          leading: CircleAvatar(
-            backgroundColor: color.withAlpha(35),
-            child: Icon(_getIconData(cat.icon), color: color, size: 22),
+        return AppCard(
+          padding: const EdgeInsets.symmetric(
+            horizontal: AppSpacing.md,
+            vertical: AppSpacing.xs,
           ),
-          title: Text(
-            cat.name,
-            style: const TextStyle(fontWeight: FontWeight.w600),
-          ),
-          subtitle: cat.isDefault
-              ? const Text('Default category', style: TextStyle(fontSize: 12))
-              : null,
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
+          child: Row(
             children: [
+              CategoryIconBadge(
+                iconName: cat.icon,
+                color: color,
+                size: CategoryBadgeSize.medium,
+              ),
+              const SizedBox(width: AppSpacing.md),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Text(
+                          cat.name,
+                          style: const TextStyle(fontWeight: FontWeight.w600),
+                        ),
+                        const SizedBox(width: AppSpacing.sm),
+                        // Color Pill Indicator
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: color.withAlpha(25),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(color: color.withAlpha(60)),
+                          ),
+                          child: Container(
+                            width: 6,
+                            height: 6,
+                            decoration: BoxDecoration(
+                              color: color,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    if (cat.isDefault)
+                      Text(
+                        'Default category',
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontSize: 12,
+                        ),
+                      ),
+                  ],
+                ),
+              ),
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 20),
                 tooltip: 'Edit',
                 onPressed: () => _openCategoryDialog(existingCategory: cat),
               ),
               IconButton(
-                icon: Icon(Icons.delete_outline, size: 20, color: Theme.of(context).colorScheme.error),
+                icon: Icon(
+                  Icons.delete_outline,
+                  size: 20,
+                  color: theme.colorScheme.error,
+                ),
                 tooltip: 'Delete',
                 onPressed: () => _confirmDelete(context, cat),
               ),

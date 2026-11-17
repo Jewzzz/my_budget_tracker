@@ -8,6 +8,7 @@ class MoneyText extends StatelessWidget {
   final bool showSign;
   final bool autoColor;
   final Color? color;
+  final String? prefix;
 
   const MoneyText({
     super.key,
@@ -16,6 +17,7 @@ class MoneyText extends StatelessWidget {
     this.showSign = false,
     this.autoColor = false,
     this.color,
+    this.prefix,
   });
 
   @override
@@ -29,6 +31,9 @@ class MoneyText extends StatelessWidget {
       formatted = '-$formatted';
     } else if (showSign && isPositive) {
       formatted = '+$formatted';
+    }
+    if (prefix != null) {
+      formatted = '$prefix$formatted';
     }
 
     Color? effectiveColor = color;

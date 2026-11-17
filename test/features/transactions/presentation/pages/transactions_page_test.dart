@@ -9,18 +9,24 @@ import 'package:my_budget_tracker/features/accounts/domain/entities/account.dart
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
 import 'package:my_budget_tracker/features/categories/domain/entities/category.dart';
+import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
+import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
+import 'package:my_budget_tracker/features/categories/presentation/pages/categories_page.dart';
 import 'package:my_budget_tracker/features/transactions/domain/entities/transaction.dart';
+import 'package:my_budget_tracker/features/transactions/domain/entities/transaction_filter.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/pages/transactions_page.dart';
 
 class MockTransactionsCubit extends MockCubit<TransactionsState> implements TransactionsCubit {}
 class MockAccountsCubit extends MockCubit<AccountsState> implements AccountsCubit {}
+class MockCategoriesCubit extends MockCubit<CategoriesState> implements CategoriesCubit {}
 
 void main() {
   group('TransactionsPage Widget Tests', () {
     late TransactionsCubit transactionsCubit;
     late AccountsCubit accountsCubit;
+    late CategoriesCubit categoriesCubit;
 
     final testAccount = Account(
       id: 'acc-1',
@@ -41,6 +47,14 @@ void main() {
       color: 0xFF10B981,
     );
 
+    final testExpenseCategory = Category(
+      id: 'cat-groceries',
+      name: 'Groceries',
+      type: CategoryType.expense,
+      icon: 'shopping_cart',
+      color: 0xFFEF4444,
+    );
+
     final testTransaction = Transaction(
       id: 'txn-inc-1',
       accountId: 'acc-1',
@@ -52,15 +66,31 @@ void main() {
       createdAt: DateTime.utc(2026, 5, 1, 9, 0),
     );
 
+    final testExpenseTransaction = Transaction(
+      id: 'txn-exp-1',
+      accountId: 'acc-1',
+      type: TransactionType.expense,
+      amount: const Money(4500), // $45.00
+      categoryId: 'cat-groceries',
+      date: DateTime.utc(2026, 5, 2, 14, 0),
+      note: 'Supermarket',
+      createdAt: DateTime.utc(2026, 5, 2, 14, 0),
+    );
+
     setUp(() {
       transactionsCubit = MockTransactionsCubit();
       accountsCubit = MockAccountsCubit();
+      categoriesCubit = MockCategoriesCubit();
 
       when(() => accountsCubit.state).thenReturn(
         AccountsLoaded(
           accounts: [testAccount],
           totalBalance: const Money(50000),
         ),
+      );
+
+      when(() => categoriesCubit.state).thenReturn(
+        const CategoriesLoaded(categories: []),
       );
     });
 
@@ -72,6 +102,7 @@ void main() {
             providers: [
               BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
               BlocProvider<AccountsCubit>.value(value: accountsCubit),
+              BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
             ],
             child: const TransactionsPage(),
           ),
@@ -164,6 +195,41 @@ void main() {
       expect(find.textContaining(r'$2,500.00'), findsAtLeastNWidgets(1));
     });
 
+    testWidgets('groups multiple days with distinct daily net totals', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          allTransactions: [testExpenseTransaction, testTransaction],
+          categories: [testCategory, testExpenseCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      // May 2 Expense Day has negative net
+      expect(find.textContaining('Net: -'), findsOneWidget);
+      expect(find.textContaining(r'$45.00'), findsAtLeastNWidgets(1));
+
+      // May 1 Income Day has positive net
+      expect(find.textContaining('Net: +'), findsOneWidget);
+      expect(find.textContaining(r'$2,500.00'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('shows filter badge when transaction filter is active', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        const TransactionsLoaded(
+          allTransactions: [],
+          filter: TransactionFilter(type: TransactionType.expense),
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      final badgeFinder = find.byType(Badge);
+      expect(badgeFinder, findsOneWidget);
+      final badgeWidget = tester.widget<Badge>(badgeFinder);
+      expect(badgeWidget.isLabelVisible, isTrue);
+    });
+
     testWidgets('typing in search bar triggers cubit updateSearchQuery', (tester) async {
       when(() => transactionsCubit.state).thenReturn(
         TransactionsLoaded(
@@ -181,6 +247,19 @@ void main() {
       await tester.pump();
 
       verify(() => transactionsCubit.updateSearchQuery('paycheck')).called(1);
+    });
+
+    testWidgets('tapping categories shortcut navigates to CategoriesPage', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        const TransactionsLoaded(allTransactions: []),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.byTooltip('Categories'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(CategoriesPage), findsOneWidget);
     });
 
     testWidgets('tapping transaction tile opens details bottom sheet', (tester) async {
