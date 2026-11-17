@@ -1,6 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 
+import '../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
+import '../../transactions/presentation/cubit/transactions_cubit.dart';
+import '../../transactions/presentation/pages/transactions_page.dart';
+import '../../transactions/presentation/widgets/quick_add_transaction_sheet.dart';
 
 class _AppTabItem {
   final String title;
@@ -41,7 +46,7 @@ class _AppShellState extends State<AppShell> {
       label: 'Transactions',
       icon: Icons.receipt_long_outlined,
       selectedIcon: Icons.receipt_long,
-      view: Center(child: Text('Transactions View')),
+      view: TransactionsPage(),
     ),
     _AppTabItem(
       title: 'Budgets',
@@ -66,6 +71,20 @@ class _AppShellState extends State<AppShell> {
     ),
   ];
 
+  void _openQuickAddSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<AccountsCubit>()),
+          BlocProvider.value(value: context.read<TransactionsCubit>()),
+        ],
+        child: const QuickAddTransactionSheet(),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final activeTab = _tabs[_currentIndex];
@@ -86,9 +105,7 @@ class _AppShellState extends State<AppShell> {
       body: activeTab.view,
       floatingActionButton: FloatingActionButton(
         tooltip: 'Quick Add Transaction',
-        onPressed: () {
-          // Open Quick Add Modal
-        },
+        onPressed: () => _openQuickAddSheet(context),
         child: const Icon(Icons.add),
       ),
       bottomNavigationBar: NavigationBar(

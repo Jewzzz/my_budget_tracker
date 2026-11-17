@@ -8,19 +8,33 @@ import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
 import 'package:my_budget_tracker/features/app/presentation/app_shell.dart';
+import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
+import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 
 class MockAccountsCubit extends MockCubit<AccountsState> implements AccountsCubit {}
+class MockTransactionsCubit extends MockCubit<TransactionsState> implements TransactionsCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
-    late AccountsCubit cubit;
+    late AccountsCubit accountsCubit;
+    late TransactionsCubit transactionsCubit;
 
     setUp(() {
-      cubit = MockAccountsCubit();
-      when(() => cubit.state).thenReturn(
+      accountsCubit = MockAccountsCubit();
+      transactionsCubit = MockTransactionsCubit();
+
+      when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
           accounts: [],
           totalBalance: Money.zero,
+        ),
+      );
+
+      when(() => transactionsCubit.state).thenReturn(
+        const TransactionsLoaded(
+          allTransactions: [],
+          recentTransactions: [],
+          categories: [],
         ),
       );
     });
@@ -30,8 +44,11 @@ void main() {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: themeMode,
-        home: BlocProvider<AccountsCubit>.value(
-          value: cubit,
+        home: MultiBlocProvider(
+          providers: [
+            BlocProvider<AccountsCubit>.value(value: accountsCubit),
+            BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
+          ],
           child: const AppShell(),
         ),
       );
@@ -64,7 +81,7 @@ void main() {
       await tester.tap(find.text('Transactions'));
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Transactions'), findsOneWidget);
-      expect(find.text('Transactions View'), findsOneWidget);
+      expect(find.text('No Transactions Found'), findsOneWidget);
 
       // Tap Budgets
       await tester.tap(find.text('Budgets'));
@@ -89,6 +106,16 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.widgetWithText(AppBar, 'Dashboard'), findsOneWidget);
       expect(find.text('Total Balance'), findsOneWidget);
+    });
+
+    testWidgets('tapping FAB opens QuickAddTransactionSheet modal', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+
+      await tester.tap(find.byType(FloatingActionButton));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Add Transaction'), findsOneWidget);
+      expect(find.text('Save Transaction'), findsOneWidget);
     });
   });
 }

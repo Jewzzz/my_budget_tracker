@@ -16,6 +16,21 @@ class AccountNotFoundFailure extends DomainFailure {
       : super(message ?? 'Account was not found.');
 }
 
+class InvalidTransactionAmountFailure extends DomainFailure {
+  const InvalidTransactionAmountFailure([String? message])
+      : super(message ?? 'Transaction amount must be strictly greater than zero.');
+}
+
+class MissingCategoryFailure extends DomainFailure {
+  const MissingCategoryFailure([String? message])
+      : super(message ?? 'A category is required for expense and income transactions.');
+}
+
+class CategoryHasTransactionsFailure extends DomainFailure {
+  const CategoryHasTransactionsFailure([String? message])
+      : super(message ?? 'Cannot delete category in use by existing transactions.');
+}
+
 class DatabaseFailure extends DomainFailure {
   const DatabaseFailure(super.message);
 }

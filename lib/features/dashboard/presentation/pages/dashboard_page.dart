@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/widgets/dashboard_accounts_section.dart';
+import 'package:my_budget_tracker/features/transactions/presentation/widgets/dashboard_recent_transactions_section.dart';
 
 class DashboardPage extends StatelessWidget {
   const DashboardPage({super.key});
@@ -12,6 +13,8 @@ class DashboardPage extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           DashboardAccountsSection(),
+          SizedBox(height: 24),
+          DashboardRecentTransactionsSection(),
         ],
       ),
     );
