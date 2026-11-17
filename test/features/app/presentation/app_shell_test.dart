@@ -24,6 +24,9 @@ import 'package:my_budget_tracker/features/savings_goals/domain/repositories/sav
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_state.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/pages/savings_goals_page.dart';
+import 'package:my_budget_tracker/features/security/presentation/cubit/security_cubit.dart';
+import 'package:my_budget_tracker/features/security/presentation/cubit/security_state.dart';
+import 'package:my_budget_tracker/features/security/presentation/pages/security_settings_page.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 
@@ -34,6 +37,7 @@ class MockBudgetsCubit extends MockCubit<BudgetsState> implements BudgetsCubit {
 class MockSavingsGoalsCubit extends MockCubit<SavingsGoalsState> implements SavingsGoalsCubit {}
 class MockSavingsGoalRepository extends Mock implements SavingsGoalRepository {}
 class MockReportsCubit extends MockCubit<ReportsState> implements ReportsCubit {}
+class MockSecurityCubit extends MockCubit<SecurityState> implements SecurityCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
@@ -44,6 +48,7 @@ void main() {
     late SavingsGoalsCubit savingsGoalsCubit;
     late SavingsGoalRepository savingsGoalRepository;
     late ReportsCubit reportsCubit;
+    late SecurityCubit securityCubit;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
@@ -53,6 +58,7 @@ void main() {
       savingsGoalsCubit = MockSavingsGoalsCubit();
       savingsGoalRepository = MockSavingsGoalRepository();
       reportsCubit = MockReportsCubit();
+      securityCubit = MockSecurityCubit();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -104,6 +110,8 @@ void main() {
         ),
       );
 
+      when(() => securityCubit.state).thenReturn(const SecurityState.initial());
+
       when(() => savingsGoalRepository.watchContributions(any()))
           .thenAnswer((_) => Stream.value([]));
     });
@@ -123,6 +131,7 @@ void main() {
               BlocProvider<BudgetsCubit>.value(value: budgetsCubit),
               BlocProvider<SavingsGoalsCubit>.value(value: savingsGoalsCubit),
               BlocProvider<ReportsCubit>.value(value: reportsCubit),
+              BlocProvider<SecurityCubit>.value(value: securityCubit),
             ],
             child: const AppShell(),
           ),
@@ -192,6 +201,16 @@ void main() {
 
       expect(find.text('Add Transaction'), findsOneWidget);
       expect(find.text('Save Transaction'), findsOneWidget);
+    });
+
+    testWidgets('tapping Settings icon opens SecuritySettingsPage', (tester) async {
+      await tester.pumpWidget(buildTestApp());
+
+      await tester.tap(find.byIcon(Icons.settings_outlined));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SecuritySettingsPage), findsOneWidget);
+      expect(find.text('Security Settings'), findsOneWidget);
     });
   });
 }

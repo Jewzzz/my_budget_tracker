@@ -18,6 +18,10 @@ import 'features/reports/presentation/cubit/reports_cubit.dart';
 import 'features/savings_goals/data/repositories/savings_goal_repository_impl.dart';
 import 'features/savings_goals/domain/repositories/savings_goal_repository.dart';
 import 'features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
+import 'features/security/data/repositories/security_repository_impl.dart';
+import 'features/security/domain/repositories/security_repository.dart';
+import 'features/security/presentation/cubit/security_cubit.dart';
+import 'features/security/presentation/widgets/app_lock_interceptor.dart';
 import 'features/transactions/data/repositories/transaction_repository_impl.dart';
 import 'features/transactions/domain/repositories/transaction_repository.dart';
 import 'features/transactions/presentation/cubit/transactions_cubit.dart';
@@ -35,6 +39,7 @@ class BudgetTrackerApp extends StatefulWidget {
   final BudgetRepository? budgetRepository;
   final SavingsGoalRepository? savingsGoalRepository;
   final ReportsRepository? reportsRepository;
+  final SecurityRepository? securityRepository;
 
   const BudgetTrackerApp({
     super.key,
@@ -45,6 +50,7 @@ class BudgetTrackerApp extends StatefulWidget {
     this.budgetRepository,
     this.savingsGoalRepository,
     this.reportsRepository,
+    this.securityRepository,
   });
 
   @override
@@ -59,6 +65,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
   late final BudgetRepository _budgetRepository;
   late final SavingsGoalRepository _savingsGoalRepository;
   late final ReportsRepository _reportsRepository;
+  late final SecurityRepository _securityRepository;
   bool _isLocalDb = false;
 
   @override
@@ -77,6 +84,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _budgetRepository = widget.budgetRepository ?? BudgetRepositoryImpl(_database);
     _savingsGoalRepository = widget.savingsGoalRepository ?? SavingsGoalRepositoryImpl(_database);
     _reportsRepository = widget.reportsRepository ?? ReportsRepositoryImpl(_database);
+    _securityRepository = widget.securityRepository ?? SecurityRepositoryImpl();
 
     _database.seedDefaultCategoriesIfEmpty();
   }
@@ -100,6 +108,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
         RepositoryProvider<BudgetRepository>.value(value: _budgetRepository),
         RepositoryProvider<SavingsGoalRepository>.value(value: _savingsGoalRepository),
         RepositoryProvider<ReportsRepository>.value(value: _reportsRepository),
+        RepositoryProvider<SecurityRepository>.value(value: _securityRepository),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -124,6 +133,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           BlocProvider<ReportsCubit>(
             create: (context) => ReportsCubit(_reportsRepository)..loadReports(),
           ),
+          BlocProvider<SecurityCubit>(
+            create: (context) => SecurityCubit(_securityRepository)..initialize(),
+          ),
         ],
         child: MaterialApp(
           title: 'Budget Tracker',
@@ -131,7 +143,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.system,
-          home: const AppShell(),
+          home: const AppLockInterceptor(child: AppShell()),
         ),
       ),
     );
