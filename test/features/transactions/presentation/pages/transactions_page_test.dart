@@ -103,5 +103,51 @@ void main() {
       expect(find.text(r'+$2,500.00'), findsOneWidget);
       expect(find.textContaining('Paycheck'), findsOneWidget);
     });
+
+    testWidgets('renders transfer transaction with transfer badge and route', (tester) async {
+      final destAccount = Account(
+        id: 'acc-2',
+        name: 'Emergency Fund',
+        type: AccountType.savings,
+        initialBalance: const Money(30000),
+        currentBalance: const Money(30000),
+        icon: 'savings',
+        color: 0xFF10B981,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      final transferTxn = Transaction(
+        id: 'txn-transfer-2',
+        accountId: testAccount.id,
+        destinationAccountId: destAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(10000), // $100.00
+        date: DateTime.utc(2026, 5, 2, 12, 0),
+        note: 'Monthly emergency fund deposit',
+        createdAt: DateTime.utc(2026, 5, 2, 12, 0),
+      );
+
+      when(() => accountsCubit.state).thenReturn(
+        AccountsLoaded(
+          accounts: [testAccount, destAccount],
+          totalBalance: const Money(80000),
+        ),
+      );
+
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          allTransactions: [transferTxn],
+          categories: [testCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Transfer'), findsOneWidget);
+      expect(find.textContaining('Main Checking → Emergency Fund'), findsOneWidget);
+      expect(find.textContaining('Monthly emergency fund deposit'), findsOneWidget);
+      expect(find.text(r'$100.00'), findsOneWidget);
+      expect(find.byIcon(Icons.swap_horiz_outlined), findsOneWidget);
+    });
   });
 }

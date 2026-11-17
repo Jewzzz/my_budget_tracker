@@ -98,5 +98,39 @@ void main() {
 
       expect(find.text('Please enter an amount'), findsOneWidget);
     });
+
+    testWidgets('renders Transfer tab, and switching to it displays Source and Destination Account pickers', (tester) async {
+      final destAccount = Account(
+        id: 'acc-2',
+        name: 'Savings',
+        type: AccountType.savings,
+        initialBalance: const Money(100000),
+        currentBalance: const Money(100000),
+        icon: 'savings',
+        color: 0xFF10B981,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      when(() => accountsCubit.state).thenReturn(
+        AccountsLoaded(
+          accounts: [testAccount, destAccount],
+          totalBalance: const Money(150000),
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      // Verify Transfer tab is present
+      expect(find.text('Transfer'), findsOneWidget);
+
+      // Tap Transfer tab
+      await tester.tap(find.text('Transfer'));
+      await tester.pumpAndSettle();
+
+      // Destination Account picker should now be visible and Category picker hidden
+      expect(find.text('Source Account'), findsOneWidget);
+      expect(find.text('Destination Account'), findsOneWidget);
+      expect(find.text('Category'), findsNothing);
+    });
   });
 }

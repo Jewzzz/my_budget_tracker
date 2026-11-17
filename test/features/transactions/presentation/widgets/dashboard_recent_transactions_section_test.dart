@@ -104,5 +104,49 @@ void main() {
       expect(find.text(r'-$32.50'), findsOneWidget);
       expect(find.textContaining('Main Checking'), findsOneWidget);
     });
+
+    testWidgets('renders transfer transaction with transfer icon, route, and neutral amount', (tester) async {
+      final destAccount = Account(
+        id: 'acc-2',
+        name: 'Savings Pot',
+        type: AccountType.savings,
+        initialBalance: const Money(10000),
+        currentBalance: const Money(10000),
+        icon: 'savings',
+        color: 0xFF10B981,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+
+      final transferTxn = Transaction(
+        id: 'txn-transfer',
+        accountId: testAccount.id,
+        destinationAccountId: destAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(15000), // $150.00
+        date: DateTime.utc(2026, 5, 2, 11, 0),
+        createdAt: DateTime.utc(2026, 5, 2, 11, 0),
+      );
+
+      when(() => accountsCubit.state).thenReturn(
+        AccountsLoaded(
+          accounts: [testAccount, destAccount],
+          totalBalance: const Money(60000),
+        ),
+      );
+
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          recentTransactions: [transferTxn],
+          categories: [testCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Transfer'), findsOneWidget);
+      expect(find.textContaining('Main Checking → Savings Pot'), findsOneWidget);
+      expect(find.text(r'$150.00'), findsOneWidget);
+      expect(find.byIcon(Icons.swap_horiz_outlined), findsOneWidget);
+    });
   });
 }

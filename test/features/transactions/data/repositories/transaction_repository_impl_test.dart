@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:my_budget_tracker/core/database/app_database.dart';
+import 'package:my_budget_tracker/core/error/failures.dart';
 import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/data/repositories/account_repository_impl.dart';
 import 'package:my_budget_tracker/features/accounts/domain/entities/account.dart';
@@ -145,6 +146,150 @@ void main() {
       // Newest date first: txn-7, txn-6, txn-5, txn-4, txn-3
       expect(recent.first.id, 'txn-7');
       expect(recent.last.id, 'txn-3');
+    });
+
+    test('executes atomic transfer modifying both balances simultaneously while preserving net worth', () async {
+      final savingsAccount = Account(
+        id: 'acc-savings',
+        name: 'Savings Account',
+        type: AccountType.savings,
+        initialBalance: const Money(20000), // $200.00
+        currentBalance: const Money(20000),
+        isArchived: false,
+        icon: 'savings',
+        color: 0xFF10B981,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+      await accountRepository.createAccount(savingsAccount);
+
+      // Pre-transfer balances:
+      // testAccount: $1000.00 (100000)
+      // savingsAccount: $200.00 (20000)
+      // Total Net Worth: $1200.00 (120000)
+      final transfer = Transaction(
+        id: 'txn-transfer-1',
+        accountId: testAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(30000), // $300.00
+        destinationAccountId: savingsAccount.id,
+        date: DateTime.utc(2026, 5, 3),
+        note: 'Savings funding',
+        createdAt: DateTime.utc(2026, 5, 3),
+      );
+
+      await transactionRepository.createTransaction(transfer);
+
+      final updatedSource = await accountRepository.getAccountById(testAccount.id);
+      final updatedDest = await accountRepository.getAccountById(savingsAccount.id);
+
+      // Source debited: $1000.00 - $300.00 = $700.00 (70000)
+      expect(updatedSource!.currentBalance, const Money(70000));
+      // Destination credited: $200.00 + $300.00 = $500.00 (50000)
+      expect(updatedDest!.currentBalance, const Money(50000));
+
+      // Net Worth conserved: $700.00 + $500.00 = $1200.00 (120000)
+      expect(
+        updatedSource.currentBalance + updatedDest.currentBalance,
+        const Money(120000),
+      );
+
+      final transactions = await transactionRepository.getTransactions();
+      expect(transactions.first.isTransfer, isTrue);
+      expect(transactions.first.destinationAccountId, savingsAccount.id);
+    });
+
+    test('throws InsufficientFundsFailure when checking source account has insufficient funds', () async {
+      final destAccount = Account(
+        id: 'acc-dest',
+        name: 'Destination Account',
+        type: AccountType.cash,
+        initialBalance: Money.zero,
+        currentBalance: Money.zero,
+        isArchived: false,
+        icon: 'payments',
+        color: 0xFFF59E0B,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+      await accountRepository.createAccount(destAccount);
+
+      // Source has 100000 ($1000), attempt to transfer 200000 ($2000)
+      final excessiveTransfer = Transaction(
+        id: 'txn-excessive',
+        accountId: testAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(200000),
+        destinationAccountId: destAccount.id,
+        date: DateTime.utc(2026, 5, 3),
+        createdAt: DateTime.utc(2026, 5, 3),
+      );
+
+      expect(
+        () => transactionRepository.createTransaction(excessiveTransfer),
+        throwsA(isA<InsufficientFundsFailure>()),
+      );
+
+      // Verify no balances were modified (rollback)
+      final source = await accountRepository.getAccountById(testAccount.id);
+      final dest = await accountRepository.getAccountById(destAccount.id);
+      expect(source!.currentBalance, const Money(100000));
+      expect(dest!.currentBalance, Money.zero);
+    });
+
+    test('allows credit card account to overdraw without throwing InsufficientFundsFailure', () async {
+      final creditAccount = Account(
+        id: 'acc-credit',
+        name: 'Credit Card',
+        type: AccountType.creditCard,
+        initialBalance: Money.zero,
+        currentBalance: Money.zero,
+        isArchived: false,
+        icon: 'credit_card',
+        color: 0xFFEF4444,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+      await accountRepository.createAccount(creditAccount);
+
+      // Transfer $150 from credit card to checking
+      final creditTransfer = Transaction(
+        id: 'txn-credit-advance',
+        accountId: creditAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(15000),
+        destinationAccountId: testAccount.id,
+        date: DateTime.utc(2026, 5, 3),
+        createdAt: DateTime.utc(2026, 5, 3),
+      );
+
+      await transactionRepository.createTransaction(creditTransfer);
+
+      final updatedCredit = await accountRepository.getAccountById(creditAccount.id);
+      final updatedChecking = await accountRepository.getAccountById(testAccount.id);
+
+      // Credit card balance goes negative (-$150.00 = -15000)
+      expect(updatedCredit!.currentBalance, const Money(-15000));
+      // Checking credited: $1000.00 + $150.00 = $1150.00 (115000)
+      expect(updatedChecking!.currentBalance, const Money(115000));
+    });
+
+    test('rolls back completely if destination account does not exist', () async {
+      final invalidTransfer = Transaction(
+        id: 'txn-fail',
+        accountId: testAccount.id,
+        type: TransactionType.transfer,
+        amount: const Money(10000),
+        destinationAccountId: 'non-existent-account-id',
+        date: DateTime.utc(2026, 5, 3),
+        createdAt: DateTime.utc(2026, 5, 3),
+      );
+
+      expect(
+        () => transactionRepository.createTransaction(invalidTransfer),
+        throwsA(isA<AccountNotFoundFailure>()),
+      );
+
+      // Source account balance unchanged
+      final source = await accountRepository.getAccountById(testAccount.id);
+      expect(source!.currentBalance, const Money(100000));
     });
   });
 }

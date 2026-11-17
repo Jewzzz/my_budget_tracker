@@ -124,31 +124,60 @@ class DashboardRecentTransactionsSection extends StatelessWidget {
                         final txn = recent[index];
                         final cat = categories.where((c) => c.id == txn.categoryId).firstOrNull;
                         final acc = accounts.where((a) => a.id == txn.accountId).firstOrNull;
+                        final dest = accounts.where((a) => a.id == txn.destinationAccountId).firstOrNull;
 
+                        final isTransfer = txn.isTransfer;
                         final isIncome = txn.isIncome;
-                        final amountColor = isIncome ? AppColors.income : AppColors.expense;
-                        final amountPrefix = isIncome ? '+' : '-';
 
-                        final iconData = cat != null ? _getCategoryIcon(cat.icon) : Icons.category_outlined;
-                        final catColor = cat != null ? Color(cat.color) : theme.colorScheme.primary;
+                        final Color amountColor;
+                        final String amountText;
+                        if (isTransfer) {
+                          amountColor = AppColors.transfer;
+                          amountText = txn.amount.format();
+                        } else if (isIncome) {
+                          amountColor = AppColors.income;
+                          amountText = '+${txn.amount.format()}';
+                        } else {
+                          amountColor = AppColors.expense;
+                          amountText = '-${txn.amount.format()}';
+                        }
+
+                        final IconData iconData;
+                        final Color itemColor;
+                        final String titleText;
+                        final String subtitleText;
+
+                        if (isTransfer) {
+                          iconData = Icons.swap_horiz_outlined;
+                          itemColor = AppColors.transfer;
+                          titleText = 'Transfer';
+                          subtitleText =
+                              '${acc?.name ?? "Account"} → ${dest?.name ?? "Account"} • ${DateFormat.MMMd().format(txn.date)}';
+                        } else {
+                          iconData = cat != null ? _getCategoryIcon(cat.icon) : Icons.category_outlined;
+                          itemColor = cat != null ? Color(cat.color) : theme.colorScheme.primary;
+                          titleText = cat?.name ?? 'Uncategorized';
+                          subtitleText =
+                              '${acc?.name ?? "Account"} • ${DateFormat.MMMd().format(txn.date)}';
+                        }
 
                         return ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: catColor.withAlpha(35),
-                            child: Icon(iconData, color: catColor, size: 20),
+                            backgroundColor: itemColor.withAlpha(35),
+                            child: Icon(iconData, color: itemColor, size: 20),
                           ),
                           title: Text(
-                            cat?.name ?? (txn.isTransfer ? 'Transfer' : 'Uncategorized'),
+                            titleText,
                             style: const TextStyle(fontWeight: FontWeight.w600),
                           ),
                           subtitle: Text(
-                            '${acc?.name ?? "Account"} • ${DateFormat.MMMd().format(txn.date)}',
+                            subtitleText,
                             style: theme.textTheme.bodySmall?.copyWith(
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
                           trailing: Text(
-                            '$amountPrefix${txn.amount.format()}',
+                            amountText,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
                               color: amountColor,

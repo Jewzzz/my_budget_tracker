@@ -55,6 +55,13 @@ class Transaction extends Equatable {
         (categoryId == null || categoryId!.trim().isEmpty)) {
       throw const MissingCategoryFailure();
     }
+    if (type == TransactionType.transfer) {
+      if (destinationAccountId == null ||
+          destinationAccountId!.trim().isEmpty ||
+          destinationAccountId == accountId) {
+        throw const SameSourceAndDestinationAccountFailure();
+      }
+    }
   }
 
   bool get isExpense => type == TransactionType.expense;

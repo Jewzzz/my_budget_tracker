@@ -29,19 +29,24 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
 
   TransactionType _currentType = TransactionType.expense;
   String? _selectedAccountId;
+  String? _selectedDestinationAccountId;
   String? _selectedCategoryId;
   DateTime _selectedDate = DateTime.now();
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {
-        _currentType = _tabController.index == 0
-            ? TransactionType.expense
-            : TransactionType.income;
+        if (_tabController.index == 0) {
+          _currentType = TransactionType.expense;
+        } else if (_tabController.index == 1) {
+          _currentType = TransactionType.income;
+        } else {
+          _currentType = TransactionType.transfer;
+        }
         _selectedCategoryId = null; // Reset category when switching type
       });
     });
@@ -69,19 +74,50 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
     }
   }
 
-  void _submit() {
+  Color get _indicatorColor {
+    switch (_currentType) {
+      case TransactionType.expense:
+        return AppColors.expense;
+      case TransactionType.income:
+        return AppColors.income;
+      case TransactionType.transfer:
+        return AppColors.transfer;
+    }
+  }
+
+  void _submit(List<Account> accounts) {
     if (!_formKey.currentState!.validate()) return;
 
     final parsedAmount = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
     final minorUnits = (parsedAmount * 100).round();
     final amount = Money(minorUnits);
 
+    if (_currentType == TransactionType.transfer) {
+      if (_selectedAccountId == _selectedDestinationAccountId) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Source and destination accounts must be distinct')),
+        );
+        return;
+      }
+      final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+      if (source != null &&
+          source.type != AccountType.creditCard &&
+          source.currentBalance < amount) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Selected account has insufficient funds for this action.')),
+        );
+        return;
+      }
+    }
+
     final transaction = Transaction(
       id: const Uuid().v4(),
       accountId: _selectedAccountId!,
       type: _currentType,
       amount: amount,
-      categoryId: _selectedCategoryId,
+      categoryId: _currentType == TransactionType.transfer ? null : _selectedCategoryId,
+      destinationAccountId:
+          _currentType == TransactionType.transfer ? _selectedDestinationAccountId : null,
       date: _selectedDate.toUtc(),
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
       createdAt: DateTime.now().toUtc(),
@@ -99,9 +135,15 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
       builder: (context, accountsState) {
         final accounts = accountsState is AccountsLoaded ? accountsState.accounts : <Account>[];
 
-        // Default to first account if none selected
+        // Default source and destination
         if (_selectedAccountId == null && accounts.isNotEmpty) {
           _selectedAccountId = accounts.first.id;
+        }
+        if (_selectedDestinationAccountId == null && accounts.length > 1) {
+          _selectedDestinationAccountId = accounts.firstWhere(
+            (a) => a.id != _selectedAccountId,
+            orElse: () => accounts.last,
+          ).id;
         }
 
         return BlocBuilder<TransactionsCubit, TransactionsState>(
@@ -115,7 +157,6 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                     _currentType == TransactionType.expense ? c.isExpense : c.isIncome)
                 .toList();
 
-            // Default to first category if none selected
             if (_selectedCategoryId == null && filteredCategories.isNotEmpty) {
               _selectedCategoryId = filteredCategories.first.id;
             }
@@ -146,7 +187,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                       ),
                       const SizedBox(height: 12),
 
-                      // Expense / Income Tabs
+                      // Expense / Income / Transfer Tabs
                       Container(
                         decoration: BoxDecoration(
                           color: theme.colorScheme.surfaceContainerHighest,
@@ -157,9 +198,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                           indicatorSize: TabBarIndicatorSize.tab,
                           dividerColor: Colors.transparent,
                           indicator: BoxDecoration(
-                            color: _currentType == TransactionType.expense
-                                ? AppColors.expense
-                                : AppColors.income,
+                            color: _indicatorColor,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           labelColor: Colors.white,
@@ -167,6 +206,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                           tabs: const [
                             Tab(text: 'Expense'),
                             Tab(text: 'Income'),
+                            Tab(text: 'Transfer'),
                           ],
                         ),
                       ),
@@ -201,12 +241,14 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                       ),
                       const SizedBox(height: 16),
 
-                      // Account Selector
+                      // Source Account Selector
                       DropdownButtonFormField<String>(
                         initialValue: _selectedAccountId,
-                        decoration: const InputDecoration(
-                          labelText: 'Account',
-                          border: OutlineInputBorder(),
+                        decoration: InputDecoration(
+                          labelText: _currentType == TransactionType.transfer
+                              ? 'Source Account'
+                              : 'Account',
+                          border: const OutlineInputBorder(),
                         ),
                         items: accounts
                             .map(
@@ -228,35 +270,71 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                           return null;
                         },
                       ),
-                      const SizedBox(height: 16),
 
-                      // Category Selector
-                      DropdownButtonFormField<String>(
-                        initialValue: _selectedCategoryId,
-                        decoration: const InputDecoration(
-                          labelText: 'Category',
-                          border: OutlineInputBorder(),
+                      // Destination Account Selector (Transfer only)
+                      if (_currentType == TransactionType.transfer) ...[
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedDestinationAccountId,
+                          decoration: const InputDecoration(
+                            labelText: 'Destination Account',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: accounts
+                              .map(
+                                (acc) => DropdownMenuItem(
+                                  value: acc.id,
+                                  child: Text('${acc.name} (${acc.currentBalance.format()})'),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedDestinationAccountId = val;
+                            });
+                          },
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Please select a destination account';
+                            }
+                            if (val == _selectedAccountId) {
+                              return 'Source and destination accounts must be distinct';
+                            }
+                            return null;
+                          },
                         ),
-                        items: filteredCategories
-                            .map(
-                              (cat) => DropdownMenuItem(
-                                value: cat.id,
-                                child: Text(cat.name),
-                              ),
-                            )
-                            .toList(),
-                        onChanged: (val) {
-                          setState(() {
-                            _selectedCategoryId = val;
-                          });
-                        },
-                        validator: (val) {
-                          if (val == null || val.isEmpty) {
-                            return 'Please select a category';
-                          }
-                          return null;
-                        },
-                      ),
+                      ],
+
+                      // Category Selector (Expense & Income only)
+                      if (_currentType != TransactionType.transfer) ...[
+                        const SizedBox(height: 16),
+                        DropdownButtonFormField<String>(
+                          initialValue: _selectedCategoryId,
+                          decoration: const InputDecoration(
+                            labelText: 'Category',
+                            border: OutlineInputBorder(),
+                          ),
+                          items: filteredCategories
+                              .map(
+                                (cat) => DropdownMenuItem(
+                                  value: cat.id,
+                                  child: Text(cat.name),
+                                ),
+                              )
+                              .toList(),
+                          onChanged: (val) {
+                            setState(() {
+                              _selectedCategoryId = val;
+                            });
+                          },
+                          validator: (val) {
+                            if (val == null || val.isEmpty) {
+                              return 'Please select a category';
+                            }
+                            return null;
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 16),
 
                       // Date & Note Row
@@ -277,14 +355,14 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                         controller: _noteController,
                         decoration: const InputDecoration(
                           labelText: 'Note (Optional)',
-                          hintText: 'e.g. Lunch with friends',
+                          hintText: 'e.g. ATM withdrawal / savings transfer',
                           border: OutlineInputBorder(),
                         ),
                       ),
                       const SizedBox(height: 20),
 
                       FilledButton(
-                        onPressed: _submit,
+                        onPressed: () => _submit(accounts),
                         style: FilledButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 14),
                         ),

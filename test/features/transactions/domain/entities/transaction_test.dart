@@ -107,6 +107,55 @@ void main() {
       );
     });
 
+    test('creates valid transfer Transaction with distinct destination and no category', () {
+      final transfer = Transaction(
+        id: 'txn-transfer-1',
+        accountId: 'acc-checking',
+        type: TransactionType.transfer,
+        amount: const Money(5000), // $50.00
+        destinationAccountId: 'acc-savings',
+        date: validDate,
+        note: 'Transfer to savings',
+        createdAt: validDate,
+      );
+
+      expect(transfer.isTransfer, isTrue);
+      expect(transfer.isExpense, isFalse);
+      expect(transfer.isIncome, isFalse);
+      expect(transfer.categoryId, isNull);
+      expect(transfer.destinationAccountId, 'acc-savings');
+    });
+
+    test('enforces destinationAccountId presence for transfer', () {
+      expect(
+        () => Transaction(
+          id: 'txn-bad-transfer',
+          accountId: 'acc-checking',
+          type: TransactionType.transfer,
+          amount: const Money(5000),
+          destinationAccountId: null,
+          date: validDate,
+          createdAt: validDate,
+        ),
+        throwsA(isA<SameSourceAndDestinationAccountFailure>()),
+      );
+    });
+
+    test('enforces that source and destination accounts are distinct', () {
+      expect(
+        () => Transaction(
+          id: 'txn-same-acc',
+          accountId: 'acc-checking',
+          type: TransactionType.transfer,
+          amount: const Money(5000),
+          destinationAccountId: 'acc-checking',
+          date: validDate,
+          createdAt: validDate,
+        ),
+        throwsA(isA<SameSourceAndDestinationAccountFailure>()),
+      );
+    });
+
     test('TransactionType parser parses strings accurately', () {
       expect(TransactionType.fromString('expense'), TransactionType.expense);
       expect(TransactionType.fromString('income'), TransactionType.income);

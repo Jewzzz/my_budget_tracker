@@ -21,6 +21,16 @@ class InvalidTransactionAmountFailure extends DomainFailure {
       : super(message ?? 'Transaction amount must be strictly greater than zero.');
 }
 
+class InsufficientFundsFailure extends DomainFailure {
+  const InsufficientFundsFailure([String? message])
+      : super(message ?? 'Selected account has insufficient funds for this action.');
+}
+
+class SameSourceAndDestinationAccountFailure extends DomainFailure {
+  const SameSourceAndDestinationAccountFailure([String? message])
+      : super(message ?? 'Source and destination accounts must be distinct.');
+}
+
 class MissingCategoryFailure extends DomainFailure {
   const MissingCategoryFailure([String? message])
       : super(message ?? 'A category is required for expense and income transactions.');
