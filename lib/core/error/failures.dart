@@ -41,6 +41,11 @@ class CategoryHasTransactionsFailure extends DomainFailure {
       : super(message ?? 'Cannot delete category in use by existing transactions.');
 }
 
+class DefaultCategoryCannotBeDeletedFailure extends DomainFailure {
+  const DefaultCategoryCannotBeDeletedFailure([String? message])
+      : super(message ?? 'Default categories cannot be deleted.');
+}
+
 class DatabaseFailure extends DomainFailure {
   const DatabaseFailure(super.message);
 }

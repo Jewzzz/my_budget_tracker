@@ -149,5 +149,56 @@ void main() {
       expect(find.text(r'$100.00'), findsOneWidget);
       expect(find.byIcon(Icons.swap_horiz_outlined), findsOneWidget);
     });
+
+    testWidgets('renders day section header with date and daily net total', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          allTransactions: [testTransaction],
+          categories: [testCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.textContaining('Net: +'), findsOneWidget);
+      expect(find.textContaining(r'$2,500.00'), findsAtLeastNWidgets(1));
+    });
+
+    testWidgets('typing in search bar triggers cubit updateSearchQuery', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          allTransactions: [testTransaction],
+          categories: [testCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      final searchField = find.byType(TextField);
+      expect(searchField, findsOneWidget);
+
+      await tester.enterText(searchField, 'paycheck');
+      await tester.pump();
+
+      verify(() => transactionsCubit.updateSearchQuery('paycheck')).called(1);
+    });
+
+    testWidgets('tapping transaction tile opens details bottom sheet', (tester) async {
+      when(() => transactionsCubit.state).thenReturn(
+        TransactionsLoaded(
+          allTransactions: [testTransaction],
+          categories: [testCategory],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('Salary'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Transaction Details'), findsOneWidget);
+      expect(find.text('Delete'), findsOneWidget);
+      expect(find.text('Edit'), findsOneWidget);
+    });
   });
 }

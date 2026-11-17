@@ -5,6 +5,7 @@ import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/categories/domain/entities/category.dart';
 import 'package:my_budget_tracker/features/categories/domain/repositories/category_repository.dart';
 import 'package:my_budget_tracker/features/transactions/domain/entities/transaction.dart';
+import 'package:my_budget_tracker/features/transactions/domain/entities/transaction_filter.dart';
 import 'package:my_budget_tracker/features/transactions/domain/repositories/transaction_repository.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
@@ -32,8 +33,20 @@ void main() {
       type: TransactionType.expense,
       amount: const Money(2000),
       categoryId: 'cat-groceries',
+      note: 'Supermarket shopping',
       date: DateTime.utc(2026, 5, 1),
       createdAt: DateTime.utc(2026, 5, 1),
+    );
+
+    final testIncome = Transaction(
+      id: 'txn-2',
+      accountId: 'acc-1',
+      type: TransactionType.income,
+      amount: const Money(50000),
+      categoryId: 'cat-salary',
+      note: 'Paycheck',
+      date: DateTime.utc(2026, 5, 2),
+      createdAt: DateTime.utc(2026, 5, 2),
     );
 
     setUp(() {
@@ -83,6 +96,78 @@ void main() {
       act: (cubit) => cubit.createTransaction(testTransaction),
       verify: (_) {
         verify(() => transactionRepository.createTransaction(testTransaction)).called(1);
+      },
+    );
+
+    blocTest<TransactionsCubit, TransactionsState>(
+      'deleteTransaction calls repository',
+      build: () {
+        when(() => transactionRepository.deleteTransaction('txn-1'))
+            .thenAnswer((_) async {});
+        return cubit;
+      },
+      act: (cubit) => cubit.deleteTransaction('txn-1'),
+      verify: (_) {
+        verify(() => transactionRepository.deleteTransaction('txn-1')).called(1);
+      },
+    );
+
+    blocTest<TransactionsCubit, TransactionsState>(
+      'updateTransaction calls repository',
+      build: () {
+        when(() => transactionRepository.updateTransaction(testTransaction))
+            .thenAnswer((_) async {});
+        return cubit;
+      },
+      act: (cubit) => cubit.updateTransaction(testTransaction),
+      verify: (_) {
+        verify(() => transactionRepository.updateTransaction(testTransaction)).called(1);
+      },
+    );
+
+    blocTest<TransactionsCubit, TransactionsState>(
+      'updateSearchQuery updates the filter in state',
+      seed: () => TransactionsLoaded(
+        allTransactions: [testTransaction, testIncome],
+        recentTransactions: [testIncome, testTransaction],
+        categories: [testCategory],
+      ),
+      build: () => cubit,
+      act: (cubit) => cubit.updateSearchQuery('supermarket'),
+      expect: () => [
+        TransactionsLoaded(
+          allTransactions: [testTransaction, testIncome],
+          recentTransactions: [testIncome, testTransaction],
+          categories: [testCategory],
+          filter: const TransactionFilter(searchQuery: 'supermarket'),
+        ),
+      ],
+      verify: (cubit) {
+        final state = cubit.state as TransactionsLoaded;
+        expect(state.filteredTransactions, [testTransaction]);
+      },
+    );
+
+    blocTest<TransactionsCubit, TransactionsState>(
+      'updateFilter updates type filter and filters correctly',
+      seed: () => TransactionsLoaded(
+        allTransactions: [testTransaction, testIncome],
+        recentTransactions: [testIncome, testTransaction],
+        categories: [testCategory],
+      ),
+      build: () => cubit,
+      act: (cubit) => cubit.updateFilter(const TransactionFilter(type: TransactionType.income)),
+      expect: () => [
+        TransactionsLoaded(
+          allTransactions: [testTransaction, testIncome],
+          recentTransactions: [testIncome, testTransaction],
+          categories: [testCategory],
+          filter: const TransactionFilter(type: TransactionType.income),
+        ),
+      ],
+      verify: (cubit) {
+        final state = cubit.state as TransactionsLoaded;
+        expect(state.filteredTransactions, [testIncome]);
       },
     );
   });

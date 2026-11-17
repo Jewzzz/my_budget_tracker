@@ -8,20 +8,25 @@ import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
 import 'package:my_budget_tracker/features/app/presentation/app_shell.dart';
+import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
+import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 
 class MockAccountsCubit extends MockCubit<AccountsState> implements AccountsCubit {}
 class MockTransactionsCubit extends MockCubit<TransactionsState> implements TransactionsCubit {}
+class MockCategoriesCubit extends MockCubit<CategoriesState> implements CategoriesCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
     late AccountsCubit accountsCubit;
     late TransactionsCubit transactionsCubit;
+    late CategoriesCubit categoriesCubit;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
       transactionsCubit = MockTransactionsCubit();
+      categoriesCubit = MockCategoriesCubit();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -37,6 +42,10 @@ void main() {
           categories: [],
         ),
       );
+
+      when(() => categoriesCubit.state).thenReturn(
+        const CategoriesLoaded(categories: []),
+      );
     });
 
     Widget buildTestApp({ThemeMode themeMode = ThemeMode.light}) {
@@ -48,6 +57,7 @@ void main() {
           providers: [
             BlocProvider<AccountsCubit>.value(value: accountsCubit),
             BlocProvider<TransactionsCubit>.value(value: transactionsCubit),
+            BlocProvider<CategoriesCubit>.value(value: categoriesCubit),
           ],
           child: const AppShell(),
         ),

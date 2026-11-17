@@ -291,5 +291,167 @@ void main() {
       final source = await accountRepository.getAccountById(testAccount.id);
       expect(source!.currentBalance, const Money(100000));
     });
+
+    group('Transaction Deletion & Mutation with Balance Reversion', () {
+      test('deleting an expense restores (credits) the account balance', () async {
+        final expenseCategories = await categoryRepository.getCategories(type: CategoryType.expense);
+        final expense = Transaction(
+          id: 'txn-del-exp',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(15000),
+          categoryId: expenseCategories.first.id,
+          date: DateTime.utc(2026, 5, 2),
+          createdAt: DateTime.utc(2026, 5, 2),
+        );
+
+        await transactionRepository.createTransaction(expense);
+        var account = await accountRepository.getAccountById(testAccount.id);
+        expect(account!.currentBalance, const Money(85000));
+
+        await transactionRepository.deleteTransaction(expense.id);
+
+        account = await accountRepository.getAccountById(testAccount.id);
+        expect(account!.currentBalance, const Money(100000));
+        final retrieved = await transactionRepository.getTransactionById(expense.id);
+        expect(retrieved, isNull);
+      });
+
+      test('deleting an income deducts (debits) the account balance', () async {
+        final incomeCategories = await categoryRepository.getCategories(type: CategoryType.income);
+        final income = Transaction(
+          id: 'txn-del-inc',
+          accountId: testAccount.id,
+          type: TransactionType.income,
+          amount: const Money(50000),
+          categoryId: incomeCategories.first.id,
+          date: DateTime.utc(2026, 5, 2),
+          createdAt: DateTime.utc(2026, 5, 2),
+        );
+
+        await transactionRepository.createTransaction(income);
+        var account = await accountRepository.getAccountById(testAccount.id);
+        expect(account!.currentBalance, const Money(150000));
+
+        await transactionRepository.deleteTransaction(income.id);
+
+        account = await accountRepository.getAccountById(testAccount.id);
+        expect(account!.currentBalance, const Money(100000));
+        final retrieved = await transactionRepository.getTransactionById(income.id);
+        expect(retrieved, isNull);
+      });
+
+      test('deleting a transfer restores both source and destination account balances', () async {
+        final destAccount = Account(
+          id: 'acc-dest-2',
+          name: 'Savings',
+          type: AccountType.savings,
+          initialBalance: const Money(50000),
+          currentBalance: const Money(50000),
+          isArchived: false,
+          icon: 'savings',
+          color: 0xFF10B981,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(destAccount);
+
+        final transfer = Transaction(
+          id: 'txn-del-xfer',
+          accountId: testAccount.id,
+          type: TransactionType.transfer,
+          amount: const Money(20000),
+          destinationAccountId: destAccount.id,
+          date: DateTime.utc(2026, 5, 2),
+          createdAt: DateTime.utc(2026, 5, 2),
+        );
+
+        await transactionRepository.createTransaction(transfer);
+        var source = await accountRepository.getAccountById(testAccount.id);
+        var dest = await accountRepository.getAccountById(destAccount.id);
+        expect(source!.currentBalance, const Money(80000));
+        expect(dest!.currentBalance, const Money(70000));
+
+        await transactionRepository.deleteTransaction(transfer.id);
+
+        source = await accountRepository.getAccountById(testAccount.id);
+        dest = await accountRepository.getAccountById(destAccount.id);
+        expect(source!.currentBalance, const Money(100000));
+        expect(dest!.currentBalance, const Money(50000));
+        final retrieved = await transactionRepository.getTransactionById(transfer.id);
+        expect(retrieved, isNull);
+      });
+
+      test('updating an expense amount correctly adjusts account balance', () async {
+        final expenseCategories = await categoryRepository.getCategories(type: CategoryType.expense);
+        final expense = Transaction(
+          id: 'txn-upd-exp',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(15000), // $150
+          categoryId: expenseCategories.first.id,
+          date: DateTime.utc(2026, 5, 2),
+          createdAt: DateTime.utc(2026, 5, 2),
+        );
+
+        await transactionRepository.createTransaction(expense);
+        var account = await accountRepository.getAccountById(testAccount.id);
+        expect(account!.currentBalance, const Money(85000));
+
+        // Update amount from 15000 to 25000 ($250)
+        final updatedExpense = expense.copyWith(
+          amount: const Money(25000),
+          note: 'Updated note',
+        );
+
+        await transactionRepository.updateTransaction(updatedExpense);
+
+        account = await accountRepository.getAccountById(testAccount.id);
+        // $1000 - $250 = $750 (75000)
+        expect(account!.currentBalance, const Money(75000));
+        final retrieved = await transactionRepository.getTransactionById(expense.id);
+        expect(retrieved!.amount, const Money(25000));
+        expect(retrieved.note, 'Updated note');
+      });
+
+      test('updating transaction moves amount across accounts when accountId changes', () async {
+        final secondAccount = Account(
+          id: 'acc-second',
+          name: 'Second Checking',
+          type: AccountType.checking,
+          initialBalance: const Money(50000),
+          currentBalance: const Money(50000),
+          isArchived: false,
+          icon: 'account_balance',
+          color: 0xFF10B981,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(secondAccount);
+
+        final expenseCategories = await categoryRepository.getCategories(type: CategoryType.expense);
+        final expense = Transaction(
+          id: 'txn-switch-acc',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(10000),
+          categoryId: expenseCategories.first.id,
+          date: DateTime.utc(2026, 5, 2),
+          createdAt: DateTime.utc(2026, 5, 2),
+        );
+
+        await transactionRepository.createTransaction(expense);
+
+        // Switch expense to secondAccount
+        final switched = expense.copyWith(accountId: secondAccount.id);
+        await transactionRepository.updateTransaction(switched);
+
+        final acc1 = await accountRepository.getAccountById(testAccount.id);
+        final acc2 = await accountRepository.getAccountById(secondAccount.id);
+
+        // acc1 balance reverted back to 100000
+        expect(acc1!.currentBalance, const Money(100000));
+        // acc2 debited by 10000 -> 40000
+        expect(acc2!.currentBalance, const Money(40000));
+      });
+    });
   });
 }

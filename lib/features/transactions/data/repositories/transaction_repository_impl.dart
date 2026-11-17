@@ -15,35 +15,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
   Future<void> createTransaction(Transaction transaction) async {
     try {
       await database.transaction(() async {
-        final accountRow = await (database.select(database.accounts)
-              ..where((tbl) => tbl.id.equals(transaction.accountId)))
-            .getSingleOrNull();
-
-        if (accountRow == null) {
-          throw const AccountNotFoundFailure('Source account was not found.');
-        }
-
-        AccountRow? destAccount;
-        if (transaction.type == TransactionType.transfer) {
-          if (transaction.destinationAccountId == null ||
-              transaction.destinationAccountId == transaction.accountId) {
-            throw const SameSourceAndDestinationAccountFailure();
-          }
-
-          destAccount = await (database.select(database.accounts)
-                ..where((tbl) => tbl.id.equals(transaction.destinationAccountId!)))
-              .getSingleOrNull();
-
-          if (destAccount == null) {
-            throw const AccountNotFoundFailure('Destination account was not found.');
-          }
-
-          final sourceAccountType = AccountType.fromString(accountRow.accountType);
-          if (sourceAccountType != AccountType.creditCard &&
-              accountRow.currentBalanceMinorUnits < transaction.amount.minorUnits) {
-            throw const InsufficientFundsFailure();
-          }
-        }
+        await _applyTransactionBalances(transaction);
 
         await database.into(database.transactions).insert(
               TransactionsCompanion.insert(
@@ -58,30 +30,46 @@ class TransactionRepositoryImpl implements TransactionRepository {
                 createdAt: transaction.createdAt.millisecondsSinceEpoch,
               ),
             );
+      });
+    } catch (e) {
+      if (e is DomainFailure) rethrow;
+      final errorStr = e.toString();
+      if (errorStr.contains('FOREIGN KEY') || errorStr.contains('787')) {
+        throw const AccountNotFoundFailure('Referenced account was not found.');
+      }
+      throw DatabaseFailure(errorStr);
+    }
+  }
 
-        int newBalanceMinorUnits = accountRow.currentBalanceMinorUnits;
-        if (transaction.type == TransactionType.expense) {
-          newBalanceMinorUnits -= transaction.amount.minorUnits;
-        } else if (transaction.type == TransactionType.income) {
-          newBalanceMinorUnits += transaction.amount.minorUnits;
-        } else if (transaction.type == TransactionType.transfer && destAccount != null) {
-          final targetDest = destAccount;
-          newBalanceMinorUnits -= transaction.amount.minorUnits;
-          await (database.update(database.accounts)
-                ..where((tbl) => tbl.id.equals(targetDest.id)))
-              .write(
-            AccountsCompanion(
-              currentBalanceMinorUnits:
-                  Value(targetDest.currentBalanceMinorUnits + transaction.amount.minorUnits),
-            ),
-          );
+  @override
+  Future<void> updateTransaction(Transaction transaction) async {
+    try {
+      await database.transaction(() async {
+        final txRow = await (database.select(database.transactions)
+              ..where((tbl) => tbl.id.equals(transaction.id)))
+            .getSingleOrNull();
+        if (txRow == null) {
+          throw const DatabaseFailure('Transaction not found to update.');
         }
 
-        await (database.update(database.accounts)
-              ..where((tbl) => tbl.id.equals(accountRow.id)))
+        // 1. Revert previous balances
+        await _revertTransactionBalances(txRow);
+
+        // 2. Apply new balances
+        await _applyTransactionBalances(transaction);
+
+        // 3. Update transaction row
+        await (database.update(database.transactions)
+              ..where((tbl) => tbl.id.equals(transaction.id)))
             .write(
-          AccountsCompanion(
-            currentBalanceMinorUnits: Value(newBalanceMinorUnits),
+          TransactionsCompanion(
+            accountId: Value(transaction.accountId),
+            transactionType: Value(transaction.type.name),
+            amountMinorUnits: Value(transaction.amount.minorUnits),
+            categoryId: Value(transaction.categoryId),
+            destinationAccountId: Value(transaction.destinationAccountId),
+            transactionDate: Value(transaction.date.millisecondsSinceEpoch),
+            note: Value(transaction.note),
           ),
         );
       });
@@ -93,6 +81,128 @@ class TransactionRepositoryImpl implements TransactionRepository {
       }
       throw DatabaseFailure(errorStr);
     }
+  }
+
+  @override
+  Future<void> deleteTransaction(String id) async {
+    try {
+      await database.transaction(() async {
+        final txRow = await (database.select(database.transactions)
+              ..where((tbl) => tbl.id.equals(id)))
+            .getSingleOrNull();
+        if (txRow == null) return;
+
+        // 1. Revert previous balances
+        await _revertTransactionBalances(txRow);
+
+        // 2. Delete transaction row
+        await (database.delete(database.transactions)
+              ..where((tbl) => tbl.id.equals(id)))
+            .go();
+      });
+    } catch (e) {
+      if (e is DomainFailure) rethrow;
+      throw DatabaseFailure(e.toString());
+    }
+  }
+
+  Future<void> _revertTransactionBalances(TransactionRow txRow) async {
+    final accountRow = await (database.select(database.accounts)
+          ..where((tbl) => tbl.id.equals(txRow.accountId)))
+        .getSingleOrNull();
+    if (accountRow == null) {
+      throw const AccountNotFoundFailure('Associated account was not found.');
+    }
+
+    int revertedBalance = accountRow.currentBalanceMinorUnits;
+    if (txRow.transactionType == TransactionType.expense.name) {
+      revertedBalance += txRow.amountMinorUnits;
+    } else if (txRow.transactionType == TransactionType.income.name) {
+      revertedBalance -= txRow.amountMinorUnits;
+    } else if (txRow.transactionType == TransactionType.transfer.name) {
+      revertedBalance += txRow.amountMinorUnits;
+      if (txRow.destinationAccountId != null) {
+        final destRow = await (database.select(database.accounts)
+              ..where((tbl) => tbl.id.equals(txRow.destinationAccountId!)))
+            .getSingleOrNull();
+        if (destRow != null) {
+          await (database.update(database.accounts)
+                ..where((tbl) => tbl.id.equals(destRow.id)))
+              .write(
+            AccountsCompanion(
+              currentBalanceMinorUnits:
+                  Value(destRow.currentBalanceMinorUnits - txRow.amountMinorUnits),
+            ),
+          );
+        }
+      }
+    }
+
+    await (database.update(database.accounts)
+          ..where((tbl) => tbl.id.equals(accountRow.id)))
+        .write(
+      AccountsCompanion(
+        currentBalanceMinorUnits: Value(revertedBalance),
+      ),
+    );
+  }
+
+  Future<void> _applyTransactionBalances(Transaction transaction) async {
+    final accountRow = await (database.select(database.accounts)
+          ..where((tbl) => tbl.id.equals(transaction.accountId)))
+        .getSingleOrNull();
+
+    if (accountRow == null) {
+      throw const AccountNotFoundFailure('Source account was not found.');
+    }
+
+    AccountRow? destAccount;
+    if (transaction.type == TransactionType.transfer) {
+      if (transaction.destinationAccountId == null ||
+          transaction.destinationAccountId == transaction.accountId) {
+        throw const SameSourceAndDestinationAccountFailure();
+      }
+
+      destAccount = await (database.select(database.accounts)
+            ..where((tbl) => tbl.id.equals(transaction.destinationAccountId!)))
+          .getSingleOrNull();
+
+      if (destAccount == null) {
+        throw const AccountNotFoundFailure('Destination account was not found.');
+      }
+
+      final sourceAccountType = AccountType.fromString(accountRow.accountType);
+      if (sourceAccountType != AccountType.creditCard &&
+          accountRow.currentBalanceMinorUnits < transaction.amount.minorUnits) {
+        throw const InsufficientFundsFailure();
+      }
+    }
+
+    int newBalanceMinorUnits = accountRow.currentBalanceMinorUnits;
+    if (transaction.type == TransactionType.expense) {
+      newBalanceMinorUnits -= transaction.amount.minorUnits;
+    } else if (transaction.type == TransactionType.income) {
+      newBalanceMinorUnits += transaction.amount.minorUnits;
+    } else if (transaction.type == TransactionType.transfer && destAccount != null) {
+      final targetDest = destAccount;
+      newBalanceMinorUnits -= transaction.amount.minorUnits;
+      await (database.update(database.accounts)
+            ..where((tbl) => tbl.id.equals(targetDest.id)))
+          .write(
+        AccountsCompanion(
+          currentBalanceMinorUnits:
+              Value(targetDest.currentBalanceMinorUnits + transaction.amount.minorUnits),
+        ),
+      );
+    }
+
+    await (database.update(database.accounts)
+          ..where((tbl) => tbl.id.equals(accountRow.id)))
+        .write(
+      AccountsCompanion(
+        currentBalanceMinorUnits: Value(newBalanceMinorUnits),
+      ),
+    );
   }
 
   @override

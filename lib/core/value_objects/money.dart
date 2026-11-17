@@ -17,6 +17,7 @@ class Money extends Equatable implements Comparable<Money> {
   Money operator -(Money other) => Money(minorUnits - other.minorUnits);
   Money operator *(int factor) => Money(minorUnits * factor);
   Money operator -() => Money(-minorUnits);
+  Money abs() => Money(minorUnits.abs());
 
   bool operator >(Money other) => minorUnits > other.minorUnits;
   bool operator <(Money other) => minorUnits < other.minorUnits;

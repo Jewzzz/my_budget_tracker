@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../accounts/presentation/cubit/accounts_cubit.dart';
+import '../../categories/presentation/cubit/categories_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../../transactions/presentation/pages/transactions_page.dart';
@@ -79,6 +80,7 @@ class _AppShellState extends State<AppShell> {
         providers: [
           BlocProvider.value(value: context.read<AccountsCubit>()),
           BlocProvider.value(value: context.read<TransactionsCubit>()),
+          BlocProvider.value(value: context.read<CategoriesCubit>()),
         ],
         child: const QuickAddTransactionSheet(),
       ),
