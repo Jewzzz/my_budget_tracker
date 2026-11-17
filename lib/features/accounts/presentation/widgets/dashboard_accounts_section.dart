@@ -1,5 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/presentation/components/money_text.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/value_objects/money.dart';
+import '../../../categories/presentation/cubit/categories_cubit.dart';
+import '../../../reports/presentation/pages/reports_page.dart';
+import '../../../transactions/domain/entities/transaction.dart';
+import '../../../transactions/presentation/cubit/transactions_cubit.dart';
+import '../../../transactions/presentation/cubit/transactions_state.dart';
+import '../../../transactions/presentation/widgets/quick_add_transaction_sheet.dart';
 import '../cubit/accounts_cubit.dart';
 import '../cubit/accounts_state.dart';
 import 'account_card.dart';
@@ -15,6 +28,119 @@ class DashboardAccountsSection extends StatelessWidget {
       builder: (_) => BlocProvider.value(
         value: context.read<AccountsCubit>(),
         child: const CreateAccountSheet(),
+      ),
+    );
+  }
+
+  void _openQuickAddSheet(
+    BuildContext context, {
+    TransactionType initialType = TransactionType.expense,
+  }) {
+    try {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<AccountsCubit>()),
+            BlocProvider.value(value: context.read<TransactionsCubit>()),
+            BlocProvider.value(value: context.read<CategoriesCubit>()),
+          ],
+          child: QuickAddTransactionSheet(initialType: initialType),
+        ),
+      );
+    } catch (_) {}
+  }
+
+  void _openReports(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        builder: (_) => Scaffold(
+          appBar: AppBar(title: const Text('Reports')),
+          body: const ReportsPage(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCashFlowPills(BuildContext context, ThemeData theme) {
+    TransactionsState? transState;
+    try {
+      transState = context.watch<TransactionsCubit>().state;
+    } catch (_) {
+      return const SizedBox.shrink();
+    }
+
+    if (transState is! TransactionsLoaded) return const SizedBox.shrink();
+
+    final now = DateTime.now();
+    final monthTxns = transState.allTransactions.where(
+      (t) => t.date.year == now.year && t.date.month == now.month,
+    );
+
+    var incomeTotal = Money.zero;
+    var expenseTotal = Money.zero;
+    for (final t in monthTxns) {
+      if (t.isIncome) incomeTotal += t.amount;
+      if (t.isExpense) expenseTotal += t.amount;
+    }
+
+    if (incomeTotal.isZero && expenseTotal.isZero) return const SizedBox.shrink();
+
+    return Padding(
+      padding: const EdgeInsets.only(top: AppSpacing.md),
+      child: Wrap(
+        spacing: AppSpacing.sm,
+        runSpacing: AppSpacing.xs,
+        children: [
+          // Income pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.income.withAlpha(25),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.income.withAlpha(60)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_upward, size: 13, color: AppColors.income),
+                const SizedBox(width: 4),
+                MoneyText(
+                  amount: incomeTotal,
+                  showSign: true,
+                  color: AppColors.income,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Expense pill
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.expense.withAlpha(25),
+              borderRadius: BorderRadius.circular(20),
+              border: Border.all(color: AppColors.expense.withAlpha(60)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.arrow_downward, size: 13, color: AppColors.expense),
+                const SizedBox(width: 4),
+                MoneyText(
+                  amount: -expenseTotal,
+                  color: AppColors.expense,
+                  style: theme.textTheme.labelSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -49,37 +175,105 @@ class DashboardAccountsSection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            // Net Worth Summary Card
-            Card(
-              elevation: 0,
-              color: theme.colorScheme.primaryContainer,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(20),
+            // Executive Net Worth Hero Card
+            AppCard(
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xl,
+                vertical: AppSpacing.xl,
               ),
-              child: Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Balance',
-                      style: theme.textTheme.titleMedium?.copyWith(
-                        color: theme.colorScheme.onPrimaryContainer.withAlpha(200),
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(70),
+              borderRadius: AppRadius.cardBorder,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Total Balance',
+                        style: theme.textTheme.titleSmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                          fontWeight: FontWeight.w600,
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      loaded.totalBalance.format(),
-                      style: theme.textTheme.headlineMedium?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: theme.colorScheme.onPrimaryContainer,
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primary.withAlpha(20),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          'Net Worth',
+                          style: theme.textTheme.labelSmall?.copyWith(
+                            color: theme.colorScheme.primary,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
+                    ],
+                  ),
+                  const SizedBox(height: AppSpacing.sm),
+                  MoneyText(
+                    amount: loaded.totalBalance,
+                    autoColor: loaded.totalBalance.isNegative,
+                    style: theme.textTheme.headlineLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      letterSpacing: -0.5,
                     ),
-                  ],
-                ),
+                  ),
+
+                  // Real-time Monthly Cash Flow Indicator Pills
+                  _buildCashFlowPills(context, theme),
+
+                  const SizedBox(height: AppSpacing.lg),
+
+                  // Quick Action Shortcuts Row
+                  Wrap(
+                    spacing: AppSpacing.sm,
+                    runSpacing: AppSpacing.sm,
+                    children: [
+                      FilledButton.icon(
+                        onPressed: () => _openQuickAddSheet(context),
+                        icon: const Icon(Icons.add, size: 18),
+                        label: const Text('Quick Add'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.smBorder,
+                          ),
+                        ),
+                      ),
+                      FilledButton.tonalIcon(
+                        onPressed: () => _openQuickAddSheet(
+                          context,
+                          initialType: TransactionType.transfer,
+                        ),
+                        icon: const Icon(Icons.swap_horiz, size: 18),
+                        label: const Text('Transfer'),
+                        style: FilledButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.smBorder,
+                          ),
+                        ),
+                      ),
+                      OutlinedButton.icon(
+                        onPressed: () => _openReports(context),
+                        icon: const Icon(Icons.bar_chart_outlined, size: 18),
+                        label: const Text('View Reports'),
+                        style: OutlinedButton.styleFrom(
+                          visualDensity: VisualDensity.compact,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: AppRadius.smBorder,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 20),
+            const SizedBox(height: AppSpacing.xl),
 
             // Accounts Section Header
             Row(
@@ -98,48 +292,16 @@ class DashboardAccountsSection extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: AppSpacing.md),
 
             // Accounts List or Empty State
             if (accounts.isEmpty)
-              Card(
-                elevation: 0,
-                color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(24),
-                  child: Column(
-                    children: [
-                      Icon(
-                        Icons.account_balance_outlined,
-                        size: 48,
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                      const SizedBox(height: 12),
-                      Text(
-                        'No Accounts Yet',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        'Add your checking, savings, or cash accounts to track balances.',
-                        textAlign: TextAlign.center,
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      FilledButton.tonal(
-                        onPressed: () => _openCreateAccountSheet(context),
-                        child: const Text('Add Account'),
-                      ),
-                    ],
-                  ),
-                ),
+              AppEmptyState(
+                icon: Icons.account_balance_outlined,
+                title: 'No Accounts Yet',
+                message: 'Add your checking, savings, or cash accounts to track balances.',
+                actionLabel: 'Add Account',
+                onAction: () => _openCreateAccountSheet(context),
               )
             else
               SizedBox(
@@ -147,7 +309,7 @@ class DashboardAccountsSection extends StatelessWidget {
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: accounts.length,
-                  separatorBuilder: (_, _) => const SizedBox(width: 12),
+                  separatorBuilder: (_, _) => const SizedBox(width: AppSpacing.md),
                   itemBuilder: (context, index) {
                     return AccountCard(account: accounts[index]);
                   },

@@ -13,7 +13,12 @@ import '../cubit/transactions_cubit.dart';
 import '../cubit/transactions_state.dart';
 
 class QuickAddTransactionSheet extends StatefulWidget {
-  const QuickAddTransactionSheet({super.key});
+  final TransactionType initialType;
+
+  const QuickAddTransactionSheet({
+    super.key,
+    this.initialType = TransactionType.expense,
+  });
 
   @override
   State<QuickAddTransactionSheet> createState() => _QuickAddTransactionSheetState();
@@ -27,7 +32,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   final _amountController = TextEditingController();
   final _noteController = TextEditingController();
 
-  TransactionType _currentType = TransactionType.expense;
+  late TransactionType _currentType;
   String? _selectedAccountId;
   String? _selectedDestinationAccountId;
   String? _selectedCategoryId;
@@ -36,7 +41,11 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _currentType = widget.initialType;
+    final initialIndex = widget.initialType == TransactionType.income
+        ? 1
+        : (widget.initialType == TransactionType.transfer ? 2 : 0);
+    _tabController = TabController(length: 3, vsync: this, initialIndex: initialIndex);
     _tabController.addListener(() {
       if (_tabController.indexIsChanging) return;
       setState(() {

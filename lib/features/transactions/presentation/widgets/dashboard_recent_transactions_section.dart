@@ -1,42 +1,39 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../accounts/presentation/cubit/accounts_state.dart';
 import '../../../categories/domain/entities/category.dart';
+import '../../../categories/presentation/cubit/categories_cubit.dart';
 import '../../domain/entities/transaction.dart';
 import '../cubit/transactions_cubit.dart';
 import '../cubit/transactions_state.dart';
+import 'quick_add_transaction_sheet.dart';
 
 class DashboardRecentTransactionsSection extends StatelessWidget {
   const DashboardRecentTransactionsSection({super.key});
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName) {
-      case 'shopping_cart':
-        return Icons.shopping_cart_outlined;
-      case 'home':
-        return Icons.home_outlined;
-      case 'restaurant':
-        return Icons.restaurant_outlined;
-      case 'directions_car':
-        return Icons.directions_car_outlined;
-      case 'bolt':
-        return Icons.bolt_outlined;
-      case 'movie':
-        return Icons.movie_outlined;
-      case 'local_hospital':
-        return Icons.local_hospital_outlined;
-      case 'work':
-        return Icons.work_outlined;
-      case 'trending_up':
-        return Icons.trending_up_outlined;
-      case 'card_giftcard':
-        return Icons.card_giftcard_outlined;
-      default:
-        return Icons.category_outlined;
-    }
+  void _openQuickAddSheet(BuildContext context) {
+    try {
+      showModalBottomSheet(
+        context: context,
+        isScrollControlled: true,
+        builder: (_) => MultiBlocProvider(
+          providers: [
+            BlocProvider.value(value: context.read<AccountsCubit>()),
+            BlocProvider.value(value: context.read<TransactionsCubit>()),
+            BlocProvider.value(value: context.read<CategoriesCubit>()),
+          ],
+          child: const QuickAddTransactionSheet(),
+        ),
+      );
+    } catch (_) {}
   }
 
   @override
@@ -74,47 +71,18 @@ class DashboardRecentTransactionsSection extends StatelessWidget {
                     ),
                   ],
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
                 if (recent.isEmpty)
-                  Card(
-                    elevation: 0,
-                    color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Padding(
-                      padding: const EdgeInsets.all(24),
-                      child: Column(
-                        children: [
-                          Icon(
-                            Icons.receipt_long_outlined,
-                            size: 40,
-                            color: theme.colorScheme.onSurfaceVariant,
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'No Transactions Yet',
-                            style: theme.textTheme.titleMedium?.copyWith(
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Tap the + button to log your first transaction.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                  AppEmptyState(
+                    icon: Icons.receipt_long_outlined,
+                    title: 'No Transactions Yet',
+                    message: 'Tap the + button to log your first transaction.',
+                    actionLabel: 'Log Transaction',
+                    onAction: () => _openQuickAddSheet(context),
                   )
                 else
-                  Card(
-                    elevation: 1,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(16),
-                    ),
+                  AppCard(
+                    padding: EdgeInsets.zero,
                     child: ListView.separated(
                       shrinkWrap: true,
                       physics: const NeverScrollableScrollPhysics(),
@@ -128,33 +96,21 @@ class DashboardRecentTransactionsSection extends StatelessWidget {
 
                         final isTransfer = txn.isTransfer;
                         final isIncome = txn.isIncome;
+                        final isExpense = txn.isExpense;
 
-                        final Color amountColor;
-                        final String amountText;
-                        if (isTransfer) {
-                          amountColor = AppColors.transfer;
-                          amountText = txn.amount.format();
-                        } else if (isIncome) {
-                          amountColor = AppColors.income;
-                          amountText = '+${txn.amount.format()}';
-                        } else {
-                          amountColor = AppColors.expense;
-                          amountText = '-${txn.amount.format()}';
-                        }
-
-                        final IconData iconData;
+                        final String iconName;
                         final Color itemColor;
                         final String titleText;
                         final String subtitleText;
 
                         if (isTransfer) {
-                          iconData = Icons.swap_horiz_outlined;
+                          iconName = 'swap_horiz';
                           itemColor = AppColors.transfer;
                           titleText = 'Transfer';
                           subtitleText =
                               '${acc?.name ?? "Account"} → ${dest?.name ?? "Account"} • ${DateFormat.MMMd().format(txn.date)}';
                         } else {
-                          iconData = cat != null ? _getCategoryIcon(cat.icon) : Icons.category_outlined;
+                          iconName = cat?.icon ?? 'category';
                           itemColor = cat != null ? Color(cat.color) : theme.colorScheme.primary;
                           titleText = cat?.name ?? 'Uncategorized';
                           subtitleText =
@@ -162,9 +118,14 @@ class DashboardRecentTransactionsSection extends StatelessWidget {
                         }
 
                         return ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: itemColor.withAlpha(35),
-                            child: Icon(iconData, color: itemColor, size: 20),
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: AppSpacing.md,
+                            vertical: AppSpacing.xs,
+                          ),
+                          leading: CategoryIconBadge(
+                            iconName: iconName,
+                            color: itemColor,
+                            size: CategoryBadgeSize.medium,
                           ),
                           title: Text(
                             titleText,
@@ -176,11 +137,13 @@ class DashboardRecentTransactionsSection extends StatelessWidget {
                               color: theme.colorScheme.onSurfaceVariant,
                             ),
                           ),
-                          trailing: Text(
-                            amountText,
+                          trailing: MoneyText(
+                            amount: isExpense ? -txn.amount : txn.amount,
+                            showSign: isIncome,
+                            autoColor: !isTransfer,
+                            color: isTransfer ? AppColors.transfer : null,
                             style: theme.textTheme.titleMedium?.copyWith(
                               fontWeight: FontWeight.bold,
-                              color: amountColor,
                             ),
                           ),
                         );
