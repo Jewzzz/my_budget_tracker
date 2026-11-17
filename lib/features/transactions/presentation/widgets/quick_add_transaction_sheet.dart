@@ -157,8 +157,11 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                     _currentType == TransactionType.expense ? c.isExpense : c.isIncome)
                 .toList();
 
-            if (_selectedCategoryId == null && filteredCategories.isNotEmpty) {
-              _selectedCategoryId = filteredCategories.first.id;
+            final hasSelectedCategory =
+                filteredCategories.any((c) => c.id == _selectedCategoryId);
+            if (!hasSelectedCategory) {
+              _selectedCategoryId =
+                  filteredCategories.isNotEmpty ? filteredCategories.first.id : null;
             }
 
             return Padding(
@@ -309,7 +312,13 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                       if (_currentType != TransactionType.transfer) ...[
                         const SizedBox(height: 16),
                         DropdownButtonFormField<String>(
-                          initialValue: _selectedCategoryId,
+                          key: ValueKey('category-picker-$_selectedCategoryId'),
+                          initialValue: filteredCategories
+                                  .any((c) => c.id == _selectedCategoryId)
+                              ? _selectedCategoryId
+                              : (filteredCategories.isNotEmpty
+                                  ? filteredCategories.first.id
+                                  : null),
                           decoration: const InputDecoration(
                             labelText: 'Category',
                             border: OutlineInputBorder(),

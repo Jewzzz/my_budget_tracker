@@ -270,7 +270,9 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                       ),
                       const SizedBox(height: 8),
                       DropdownButtonFormField<String?>(
-                        initialValue: _selectedCategoryId,
+                        initialValue: categories.any((c) => c.id == _selectedCategoryId)
+                            ? _selectedCategoryId
+                            : null,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
                           contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),

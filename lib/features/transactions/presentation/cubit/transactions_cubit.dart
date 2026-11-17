@@ -13,6 +13,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   final CategoryRepository categoryRepository;
 
   StreamSubscription<List<Transaction>>? _allTransactionsSub;
+  StreamSubscription<List<Category>>? _categoriesSub;
 
   List<Category> _cachedCategories = [];
   List<Transaction> _currentAllTransactions = [];
@@ -30,6 +31,21 @@ class TransactionsCubit extends Cubit<TransactionsState> {
       _cachedCategories = await categoryRepository.getCategories();
     } catch (_) {
       // Ignore initial category load errors or let empty list fallback
+    }
+
+    _categoriesSub?.cancel();
+    try {
+      _categoriesSub = categoryRepository.watchCategories().listen(
+        (categories) {
+          _cachedCategories = categories;
+          if (state is TransactionsLoaded) {
+            _emitLoaded();
+          }
+        },
+        onError: (_) {},
+      );
+    } catch (_) {
+      // Allow fallback if watchCategories is not implemented or throws
     }
 
     _allTransactionsSub?.cancel();
@@ -123,6 +139,7 @@ class TransactionsCubit extends Cubit<TransactionsState> {
   @override
   Future<void> close() {
     _allTransactionsSub?.cancel();
+    _categoriesSub?.cancel();
     return super.close();
   }
 }

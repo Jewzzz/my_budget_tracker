@@ -71,6 +71,8 @@ void main() {
       build: () {
         when(() => categoryRepository.getCategories())
             .thenAnswer((_) async => [testCategory]);
+        when(() => categoryRepository.watchCategories())
+            .thenAnswer((_) => Stream.value([testCategory]));
         when(() => transactionRepository.watchTransactions())
             .thenAnswer((_) => Stream.value([testTransaction]));
         return cubit;
@@ -82,6 +84,54 @@ void main() {
           allTransactions: [testTransaction],
           recentTransactions: [testTransaction],
           categories: [testCategory],
+        ),
+      ],
+    );
+
+    blocTest<TransactionsCubit, TransactionsState>(
+      'reactively updates state when watchCategories emits updated category list',
+      build: () {
+        when(() => categoryRepository.getCategories())
+            .thenAnswer((_) async => [testCategory]);
+        when(() => categoryRepository.watchCategories())
+            .thenAnswer((_) => Stream.fromIterable([
+                  [testCategory],
+                  [
+                    testCategory,
+                    const Category(
+                      id: 'cat-books',
+                      name: 'Books',
+                      type: CategoryType.expense,
+                      icon: 'book',
+                      color: 0xFF123456,
+                    ),
+                  ],
+                ]));
+        when(() => transactionRepository.watchTransactions())
+            .thenAnswer((_) => Stream.value([testTransaction]));
+        return cubit;
+      },
+      act: (cubit) => cubit.loadTransactions(),
+      expect: () => [
+        const TransactionsLoading(),
+        TransactionsLoaded(
+          allTransactions: [testTransaction],
+          recentTransactions: [testTransaction],
+          categories: [testCategory],
+        ),
+        TransactionsLoaded(
+          allTransactions: [testTransaction],
+          recentTransactions: [testTransaction],
+          categories: [
+            testCategory,
+            const Category(
+              id: 'cat-books',
+              name: 'Books',
+              type: CategoryType.expense,
+              icon: 'book',
+              color: 0xFF123456,
+            ),
+          ],
         ),
       ],
     );
