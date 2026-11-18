@@ -8,9 +8,12 @@ import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
 import 'package:my_budget_tracker/features/app/presentation/app_shell.dart';
+import 'package:my_budget_tracker/features/budgets/domain/entities/budget.dart';
+import 'package:my_budget_tracker/features/budgets/domain/entities/category_budget_overview.dart';
 import 'package:my_budget_tracker/features/budgets/presentation/pages/budgets_page.dart';
 import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_cubit.dart';
 import 'package:my_budget_tracker/features/budgets/presentation/cubit/budgets_state.dart';
+import 'package:my_budget_tracker/features/categories/domain/entities/category.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_cubit.dart';
 import 'package:my_budget_tracker/features/categories/presentation/cubit/categories_state.dart';
 import 'package:my_budget_tracker/features/reports/domain/entities/cash_flow_report.dart';
@@ -211,6 +214,102 @@ void main() {
 
       expect(find.byType(SecuritySettingsPage), findsOneWidget);
       expect(find.text('Security Settings'), findsOneWidget);
+    });
+
+    testWidgets('when on Budgets tab, FAB has Set Category Budget tooltip and opens SetBudgetSheet', (tester) async {
+      final catGroceries = Category(
+        id: 'cat-groceries',
+        name: 'Groceries',
+        type: CategoryType.expense,
+        icon: 'shopping_cart',
+        color: 0xFF10B981,
+      );
+      final catTransport = Category(
+        id: 'cat-transport',
+        name: 'Transport',
+        type: CategoryType.expense,
+        icon: 'directions_car',
+        color: 0xFF3B82F6,
+      );
+
+      when(() => categoriesCubit.state).thenReturn(
+        CategoriesLoaded(categories: [catGroceries, catTransport]),
+      );
+
+      await tester.pumpWidget(buildTestApp());
+
+      // Navigate to Budgets tab
+      await tester.tap(find.text('Budgets'));
+      await tester.pumpAndSettle();
+
+      // Verify FAB tooltip is 'Set Category Budget'
+      expect(find.byTooltip('Set Category Budget'), findsAtLeastNWidgets(1));
+
+      // Tap FAB
+      await tester.tap(find.byKey(const ValueKey('add_budget_fab')));
+      await tester.pumpAndSettle();
+
+      // Verify SetBudgetSheet is opened
+      expect(find.text('Set Category Budget'), findsOneWidget);
+      expect(find.text('Set Budget'), findsOneWidget);
+    });
+
+    testWidgets('allows adding a second budget when an existing budget is present', (tester) async {
+      final catGroceries = Category(
+        id: 'cat-groceries',
+        name: 'Groceries',
+        type: CategoryType.expense,
+        icon: 'shopping_cart',
+        color: 0xFF10B981,
+      );
+      final catTransport = Category(
+        id: 'cat-transport',
+        name: 'Transport',
+        type: CategoryType.expense,
+        icon: 'directions_car',
+        color: 0xFF3B82F6,
+      );
+
+      final existingBudget = Budget(
+        id: 'b-1',
+        categoryId: catGroceries.id,
+        year: 2026,
+        month: 5,
+        limitAmount: const Money(50000),
+      );
+      final existingOverview = CategoryBudgetOverview(
+        budget: existingBudget,
+        category: catGroceries,
+        spentAmount: const Money(15000),
+      );
+
+      when(() => categoriesCubit.state).thenReturn(
+        CategoriesLoaded(categories: [catGroceries, catTransport]),
+      );
+      when(() => budgetsCubit.state).thenReturn(
+        BudgetsLoaded(year: 2026, month: 5, budgets: [existingOverview]),
+      );
+
+      await tester.pumpWidget(buildTestApp());
+
+      // Navigate to Budgets tab
+      await tester.tap(find.text('Budgets'));
+      await tester.pumpAndSettle();
+
+      // Verify existing budget card and section header are shown
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Category Budgets'), findsOneWidget);
+
+      // Verify primary FAB is still available for setting another budget
+      expect(find.byKey(const ValueKey('add_budget_fab')), findsOneWidget);
+
+      // Tap FAB to add another budget
+      await tester.tap(find.byKey(const ValueKey('add_budget_fab')));
+      await tester.pumpAndSettle();
+
+      // Verify SetBudgetSheet is opened in create mode
+      expect(find.text('Set Category Budget'), findsOneWidget);
+      expect(find.text('Set Budget'), findsOneWidget);
     });
   });
 }

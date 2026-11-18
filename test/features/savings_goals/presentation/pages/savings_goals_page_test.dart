@@ -13,6 +13,7 @@ import 'package:my_budget_tracker/features/savings_goals/domain/repositories/sav
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_cubit.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savings_goals_state.dart';
 import 'package:my_budget_tracker/features/savings_goals/presentation/pages/savings_goals_page.dart';
+import 'package:my_budget_tracker/features/savings_goals/presentation/widgets/deposit_withdraw_sheet.dart';
 
 class MockSavingsGoalsCubit extends MockCubit<SavingsGoalsState>
     implements SavingsGoalsCubit {}
@@ -171,8 +172,14 @@ void main() {
       await tester.tap(find.text('Deposit'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Deposit to Goal'), findsOneWidget);
-      expect(find.text('Deposit Funds'), findsOneWidget);
+      expect(find.text('Deposit to Vacation Trip'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(DepositWithdrawSheet),
+          matching: find.text('Deposit'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping Withdraw opens DepositWithdrawSheet for withdrawal', (tester) async {
@@ -185,8 +192,14 @@ void main() {
       await tester.tap(find.text('Withdraw'));
       await tester.pumpAndSettle();
 
-      expect(find.text('Withdraw from Goal'), findsOneWidget);
-      expect(find.text('Withdraw Funds'), findsOneWidget);
+      expect(find.text('Withdraw from Vacation Trip'), findsOneWidget);
+      expect(
+        find.descendant(
+          of: find.byType(DepositWithdrawSheet),
+          matching: find.text('Withdraw'),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('tapping GoalCard opens GoalDetailsSheet', (tester) async {

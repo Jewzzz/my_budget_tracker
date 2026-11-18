@@ -23,18 +23,17 @@ class AppBottomSheet extends StatelessWidget {
     final theme = Theme.of(context);
     final bottomInset = MediaQuery.of(context).viewInsets.bottom;
 
-    return Container(
-      decoration: BoxDecoration(
-        color: theme.colorScheme.surface,
-        borderRadius: AppRadius.sheetBorder,
-      ),
-      padding: EdgeInsets.only(
-        left: AppSpacing.xl,
-        right: AppSpacing.xl,
-        top: AppSpacing.md,
-        bottom: bottomInset + AppSpacing.xl,
-      ),
-      child: Column(
+    return Material(
+      color: theme.colorScheme.surface,
+      borderRadius: AppRadius.sheetBorder,
+      child: Container(
+        padding: EdgeInsets.only(
+          left: AppSpacing.xl,
+          right: AppSpacing.xl,
+          top: AppSpacing.md,
+          bottom: bottomInset + AppSpacing.xl,
+        ),
+        child: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -88,6 +87,7 @@ class AppBottomSheet extends StatelessWidget {
           ),
         ],
       ),
-    );
+    ),
+  );
   }
 }

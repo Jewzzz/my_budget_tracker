@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 
 import '../../accounts/presentation/cubit/accounts_cubit.dart';
+import '../../budgets/presentation/cubit/budgets_cubit.dart';
+import '../../budgets/presentation/cubit/budgets_state.dart';
 import '../../budgets/presentation/pages/budgets_page.dart';
+import '../../budgets/presentation/widgets/set_budget_sheet.dart';
 import '../../categories/presentation/cubit/categories_cubit.dart';
 import '../../dashboard/presentation/pages/dashboard_page.dart';
 import '../../reports/presentation/pages/reports_page.dart';
@@ -92,6 +95,61 @@ class _AppShellState extends State<AppShell> {
     );
   }
 
+  void _openSetBudgetSheet(BuildContext context) {
+    final budgetsState = context.read<BudgetsCubit>().state;
+    final year = budgetsState is BudgetsLoaded ? budgetsState.year : DateTime.now().year;
+    final month = budgetsState is BudgetsLoaded ? budgetsState.month : DateTime.now().month;
+    final existingCategoryIds = budgetsState is BudgetsLoaded
+        ? budgetsState.budgets.map((b) => b.category.id).toList()
+        : <String>[];
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      builder: (_) => MultiBlocProvider(
+        providers: [
+          BlocProvider.value(value: context.read<BudgetsCubit>()),
+          BlocProvider.value(value: context.read<CategoriesCubit>()),
+        ],
+        child: SetBudgetSheet(
+          year: year,
+          month: month,
+          existingBudgetCategoryIds: existingCategoryIds,
+        ),
+      ),
+    );
+  }
+
+  Widget? _buildFloatingActionButton(BuildContext context) {
+    switch (_currentIndex) {
+      case 0: // Dashboard
+      case 1: // Transactions
+        return FloatingActionButton(
+          key: const ValueKey('quick_add_txn_fab'),
+          heroTag: 'quick_add_txn_fab',
+          tooltip: 'Quick Add Transaction',
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onPressed: () => _openQuickAddSheet(context),
+          child: const Icon(Icons.add),
+        );
+      case 2: // Budgets
+        return FloatingActionButton(
+          key: const ValueKey('add_budget_fab'),
+          heroTag: 'add_budget_fab',
+          tooltip: 'Set Category Budget',
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          onPressed: () => _openSetBudgetSheet(context),
+          child: const Icon(Icons.add),
+        );
+      case 3: // Savings Goals (handled by SavingsGoalsPage inner FAB)
+      case 4: // Reports
+      default:
+        return null;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -133,13 +191,7 @@ class _AppShellState extends State<AppShell> {
           child: activeTab.view,
         ),
       ),
-      floatingActionButton: FloatingActionButton(
-        tooltip: 'Quick Add Transaction',
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        onPressed: () => _openQuickAddSheet(context),
-        child: const Icon(Icons.add),
-      ),
+      floatingActionButton: _buildFloatingActionButton(context),
       bottomNavigationBar: NavigationBarTheme(
         data: NavigationBarThemeData(
           indicatorShape: const StadiumBorder(),
