@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/reports_timeframe.dart';
 
 class ReportsTimeframeSelector extends StatelessWidget {
@@ -36,9 +38,14 @@ class ReportsTimeframeSelector extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return SingleChildScrollView(
       scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(
+        horizontal: AppSpacing.lg,
+        vertical: AppSpacing.sm,
+      ),
       child: Row(
         children: ReportsTimeframe.values.map((timeframe) {
           final isSelected = timeframe == selectedTimeframe;
@@ -50,10 +57,33 @@ class ReportsTimeframeSelector extends StatelessWidget {
           }
 
           return Padding(
-            padding: const EdgeInsets.only(right: 8),
+            padding: const EdgeInsets.only(right: AppSpacing.sm),
             child: ChoiceChip(
-              label: Text(label),
+              label: Text(
+                label,
+                style: theme.textTheme.labelMedium?.copyWith(
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                  color: isSelected
+                      ? theme.colorScheme.onPrimaryContainer
+                      : theme.colorScheme.onSurfaceVariant,
+                ),
+              ),
               selected: isSelected,
+              showCheckmark: false,
+              selectedColor: theme.colorScheme.primaryContainer,
+              backgroundColor: theme.colorScheme.surfaceContainerHighest.withAlpha(90),
+              shape: RoundedRectangleBorder(
+                borderRadius: AppRadius.pillBorder,
+                side: BorderSide(
+                  color: isSelected
+                      ? theme.colorScheme.primary.withAlpha(160)
+                      : theme.colorScheme.outlineVariant.withAlpha(80),
+                ),
+              ),
+              padding: const EdgeInsets.symmetric(
+                horizontal: AppSpacing.xs,
+                vertical: AppSpacing.xs,
+              ),
               onSelected: (selected) {
                 if (!selected) return;
                 if (timeframe == ReportsTimeframe.custom) {

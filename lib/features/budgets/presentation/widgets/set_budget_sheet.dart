@@ -1,5 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../categories/domain/entities/category.dart';
 import '../../../categories/presentation/cubit/categories_cubit.dart';
@@ -106,122 +110,107 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
     final theme = Theme.of(context);
     final isEditing = widget.existingOverview != null;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEditing ? 'Edit Category Budget' : 'Set Category Budget',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
+    return AppBottomSheet(
+      title: isEditing ? 'Edit Category Budget' : 'Set Category Budget',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Category Selector
+            BlocBuilder<CategoriesCubit, CategoriesState>(
+              builder: (context, catState) {
+                final categories = catState is CategoriesLoaded
+                    ? catState.expenseCategories
+                    : <Category>[];
 
-                // Category Selector
-                BlocBuilder<CategoriesCubit, CategoriesState>(
-                  builder: (context, catState) {
-                    final categories = catState is CategoriesLoaded
-                        ? catState.expenseCategories
-                        : <Category>[];
+                // Available categories are unbudgeted ones, plus the currently selected one
+                final available = categories.where((c) {
+                  if (c.id == _selectedCategoryId) return true;
+                  return !widget.existingBudgetCategoryIds.contains(c.id);
+                }).toList();
 
-                    // Available categories are unbudgeted ones, plus the currently selected one
-                    final available = categories.where((c) {
-                      if (c.id == _selectedCategoryId) return true;
-                      return !widget.existingBudgetCategoryIds.contains(c.id);
-                    }).toList();
-
-                    return DropdownButtonFormField<String>(
-                      initialValue: _selectedCategoryId,
-                      decoration: const InputDecoration(
-                        labelText: 'Expense Category',
-                        border: OutlineInputBorder(),
-                      ),
-                      items: available
-                          .map((c) => DropdownMenuItem(value: c.id, child: Text(c.name)))
-                          .toList(),
-                      onChanged: isEditing
-                          ? null // Cannot change category when editing existing budget
-                          : (val) => setState(() => _selectedCategoryId = val),
-                      validator: (val) => val == null ? 'Please select a category' : null,
-                    );
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Limit Amount Field
-                TextFormField(
-                  controller: _amountController,
-                  autofocus: true,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                return DropdownButtonFormField<String>(
+                  value: _selectedCategoryId,
                   decoration: const InputDecoration(
-                    labelText: 'Monthly Spending Limit',
-                    prefixText: '\$ ',
+                    labelText: 'Expense Category',
                     border: OutlineInputBorder(),
+                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                   ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter a spending limit';
-                    }
-                    final parsed = double.tryParse(value.replaceAll(',', ''));
-                    if (parsed == null || parsed <= 0) {
-                      return 'Spending limit must be greater than zero';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 24),
-
-                // Action Buttons
-                Row(
-                  children: [
-                    if (isEditing) ...[
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: _confirmDelete,
-                          icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
-                          label: Text(
-                            'Delete',
-                            style: TextStyle(color: theme.colorScheme.error),
-                          ),
-                          style: OutlinedButton.styleFrom(
-                            side: BorderSide(color: theme.colorScheme.error),
+                  items: available
+                      .map(
+                        (c) => DropdownMenuItem(
+                          value: c.id,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CategoryIconBadge(
+                                iconName: c.icon,
+                                color: Color(c.color),
+                                size: 24,
+                              ),
+                              const SizedBox(width: 10),
+                              Flexible(
+                                child: Text(c.name, overflow: TextOverflow.ellipsis),
+                              ),
+                            ],
                           ),
                         ),
+                      )
+                      .toList(),
+                  onChanged: isEditing
+                      ? null // Cannot change category when editing existing budget
+                      : (val) => setState(() => _selectedCategoryId = val),
+                  validator: (val) => val == null ? 'Please select a category' : null,
+                );
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Limit Amount Field
+            MoneyInputField(
+              controller: _amountController,
+              autofocus: true,
+              label: 'Monthly Spending Limit',
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Action Buttons
+            Row(
+              children: [
+                if (isEditing) ...[
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: _confirmDelete,
+                      icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
+                      label: Text(
+                        'Delete',
+                        style: TextStyle(color: theme.colorScheme.error),
                       ),
-                      const SizedBox(width: 12),
-                    ],
-                    Expanded(
-                      child: FilledButton(
-                        onPressed: _submit,
-                        child: Text(isEditing ? 'Save Changes' : 'Set Budget'),
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        side: BorderSide(color: theme.colorScheme.error),
                       ),
                     ),
-                  ],
+                  ),
+                  const SizedBox(width: AppSpacing.md),
+                ],
+                Expanded(
+                  child: FilledButton(
+                    onPressed: _submit,
+                    style: FilledButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    child: Text(
+                      isEditing ? 'Save Changes' : 'Set Budget',
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ),
                 ),
               ],
             ),
-          ),
+          ],
         ),
       ),
     );

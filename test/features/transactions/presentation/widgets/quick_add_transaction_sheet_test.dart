@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mocktail/mocktail.dart';
+import 'package:my_budget_tracker/core/presentation/components/app_bottom_sheet.dart';
+import 'package:my_budget_tracker/core/presentation/components/money_input_field.dart';
 import 'package:my_budget_tracker/core/theme/app_theme.dart';
 import 'package:my_budget_tracker/core/value_objects/money.dart';
 import 'package:my_budget_tracker/features/accounts/domain/entities/account.dart';
@@ -81,9 +83,12 @@ void main() {
       );
     }
 
-    testWidgets('renders Expense and Income tabs with amount auto-focus', (tester) async {
+    testWidgets('renders AppBottomSheet with MoneyInputField and Expense/Income tabs', (tester) async {
       await tester.pumpWidget(buildTestWidget());
 
+      expect(find.byType(AppBottomSheet), findsOneWidget);
+      expect(find.byType(MoneyInputField), findsOneWidget);
+      expect(find.text('Add Transaction'), findsOneWidget);
       expect(find.text('Expense'), findsOneWidget);
       expect(find.text('Income'), findsOneWidget);
       expect(find.byType(TextFormField), findsWidgets);

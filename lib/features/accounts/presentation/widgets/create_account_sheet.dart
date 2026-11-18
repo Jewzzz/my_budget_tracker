@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../domain/entities/account.dart';
 import '../cubit/accounts_cubit.dart';
@@ -72,154 +75,131 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
+    return AppBottomSheet(
+      title: 'Create Account',
       child: Form(
         key: _formKey,
-        child: SingleChildScrollView(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Text('Create Account', style: theme.textTheme.titleLarge),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Account Name',
+                hintText: 'e.g. Main Checking, Cash Wallet',
+                border: OutlineInputBorder(),
               ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(
-                  labelText: 'Account Name',
-                  hintText: 'e.g. Main Checking, Cash Wallet',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Please enter an account name';
-                  }
-                  return null;
-                },
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Please enter an account name';
+                }
+                return null;
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            DropdownButtonFormField<AccountType>(
+              value: _selectedType,
+              decoration: const InputDecoration(
+                labelText: 'Account Type',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               ),
-              const SizedBox(height: 16),
-              DropdownButtonFormField<AccountType>(
-                initialValue: _selectedType,
-                decoration: const InputDecoration(
-                  labelText: 'Account Type',
-                  border: OutlineInputBorder(),
-                ),
-                items: AccountType.values
-                    .map(
-                      (type) => DropdownMenuItem(
-                        value: type,
-                        child: Text(type.displayName),
-                      ),
-                    )
-                    .toList(),
-                onChanged: (val) {
-                  if (val != null) {
+              items: AccountType.values
+                  .map(
+                    (type) => DropdownMenuItem(
+                      value: type,
+                      child: Text(type.displayName),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedType = val;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            MoneyInputField(
+              controller: _balanceController,
+              label: 'Initial Balance',
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            Text('Icon', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: _iconOptions.map((opt) {
+                final isSelected = _selectedIcon == opt['name'];
+                return InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () {
                     setState(() {
-                      _selectedType = val;
+                      _selectedIcon = opt['name'] as String;
                     });
-                  }
-                },
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _balanceController,
-                keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                decoration: const InputDecoration(
-                  labelText: 'Initial Balance',
-                  prefixText: '\$ ',
-                  border: OutlineInputBorder(),
-                ),
-                validator: (val) {
-                  if (val == null || val.trim().isEmpty) {
-                    return 'Please enter initial balance';
-                  }
-                  if (double.tryParse(val.replaceAll(',', '')) == null) {
-                    return 'Please enter a valid amount';
-                  }
-                  return null;
-                },
-              ),
-              const SizedBox(height: 16),
-              Text('Icon', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _iconOptions.map((opt) {
-                  final isSelected = _selectedIcon == opt['name'];
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () {
-                      setState(() {
-                        _selectedIcon = opt['name'] as String;
-                      });
-                    },
-                    child: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        shape: BoxShape.circle,
-                        color: isSelected
-                            ? theme.colorScheme.primaryContainer
-                            : theme.colorScheme.surfaceContainerHighest,
-                      ),
-                      child: Icon(
-                        opt['icon'] as IconData,
-                        color: isSelected
-                            ? theme.colorScheme.onPrimaryContainer
-                            : theme.colorScheme.onSurfaceVariant,
-                      ),
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? theme.colorScheme.primaryContainer
+                          : theme.colorScheme.surfaceContainerHighest,
                     ),
-                  );
-                }).toList(),
-              ),
-              const SizedBox(height: 16),
-              Text('Color', style: theme.textTheme.labelLarge),
-              const SizedBox(height: 8),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: _colorOptions.map((colorVal) {
-                  final isSelected = _selectedColor == colorVal;
-                  return InkWell(
-                    borderRadius: BorderRadius.circular(24),
-                    onTap: () {
-                      setState(() {
-                        _selectedColor = colorVal;
-                      });
-                    },
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: Color(colorVal),
-                        shape: BoxShape.circle,
-                        border: isSelected
-                            ? Border.all(color: theme.colorScheme.onSurface, width: 3)
-                            : null,
-                      ),
+                    child: Icon(
+                      opt['icon'] as IconData,
+                      color: isSelected
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurfaceVariant,
                     ),
-                  );
-                }).toList(),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            Text('Color', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: _colorOptions.map((colorVal) {
+                final isSelected = _selectedColor == colorVal;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () {
+                    setState(() {
+                      _selectedColor = colorVal;
+                    });
+                  },
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Color(colorVal),
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: theme.colorScheme.onSurface, width: 3)
+                          : null,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            FilledButton(
+              onPressed: _submit,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
               ),
-              const SizedBox(height: 24),
-              FilledButton(
-                onPressed: _submit,
-                child: const Text('Save Account'),
-              ),
-            ],
-          ),
+              child: const Text('Save Account', style: TextStyle(fontSize: 16)),
+            ),
+          ],
         ),
       ),
     );

@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../cubit/reports_cubit.dart';
 import '../cubit/reports_state.dart';
 import '../widgets/cash_flow_view.dart';
@@ -32,26 +35,12 @@ class ReportsPage extends StatelessWidget {
 
         if (state is ReportsError) {
           return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.error_outline, size: 48, color: theme.colorScheme.error),
-                  const SizedBox(height: 16),
-                  Text(
-                    state.message,
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.bodyMedium,
-                  ),
-                  const SizedBox(height: 16),
-                  FilledButton.icon(
-                    onPressed: () => context.read<ReportsCubit>().loadReports(),
-                    icon: const Icon(Icons.refresh),
-                    label: const Text('Retry'),
-                  ),
-                ],
-              ),
+            child: AppEmptyState(
+              icon: Icons.error_outline,
+              title: 'Unable to Load Reports',
+              message: state.message,
+              actionLabel: 'Retry',
+              onAction: () => context.read<ReportsCubit>().loadReports(),
             ),
           );
         }
@@ -71,36 +60,46 @@ class ReportsPage extends StatelessWidget {
                         );
                   },
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.xs),
 
                 // View Switcher (Segmented Button)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: SegmentedButton<ReportsView>(
-                    segments: const [
-                      ButtonSegment(
-                        value: ReportsView.cashFlow,
-                        label: Text('Cash Flow'),
-                        icon: Icon(Icons.compare_arrows),
+                  padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg),
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: SegmentedButton<ReportsView>(
+                      style: SegmentedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: AppRadius.smBorder,
+                        ),
+                        selectedBackgroundColor: theme.colorScheme.primaryContainer,
+                        selectedForegroundColor: theme.colorScheme.onPrimaryContainer,
                       ),
-                      ButtonSegment(
-                        value: ReportsView.categoryBreakdown,
-                        label: Text('Categories'),
-                        icon: Icon(Icons.pie_chart_outline),
-                      ),
-                      ButtonSegment(
-                        value: ReportsView.netWorth,
-                        label: Text('Net Worth'),
-                        icon: Icon(Icons.show_chart),
-                      ),
-                    ],
-                    selected: {state.selectedView},
-                    onSelectionChanged: (newSelection) {
-                      context.read<ReportsCubit>().changeView(newSelection.first);
-                    },
+                      segments: const [
+                        ButtonSegment(
+                          value: ReportsView.cashFlow,
+                          label: Text('Cash Flow'),
+                          icon: Icon(Icons.compare_arrows),
+                        ),
+                        ButtonSegment(
+                          value: ReportsView.categoryBreakdown,
+                          label: Text('Categories'),
+                          icon: Icon(Icons.pie_chart_outline),
+                        ),
+                        ButtonSegment(
+                          value: ReportsView.netWorth,
+                          label: Text('Net Worth'),
+                          icon: Icon(Icons.show_chart),
+                        ),
+                      ],
+                      selected: {state.selectedView},
+                      onSelectionChanged: (newSelection) {
+                        context.read<ReportsCubit>().changeView(newSelection.first);
+                      },
+                    ),
                   ),
                 ),
-                const SizedBox(height: 12),
+                const SizedBox(height: AppSpacing.md),
 
                 // Active View Content
                 Expanded(

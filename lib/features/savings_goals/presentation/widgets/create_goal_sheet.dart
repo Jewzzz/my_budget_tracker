@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../domain/entities/savings_goal.dart';
 import '../cubit/savings_goals_cubit.dart';
@@ -154,169 +157,136 @@ class _CreateGoalSheetState extends State<CreateGoalSheet> {
     final theme = Theme.of(context);
     final isEditing = widget.existingGoal != null;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isEditing ? 'Edit Savings Goal' : 'Create Savings Goal',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-
-                // Goal Name
-                TextFormField(
-                  controller: _nameController,
-                  decoration: const InputDecoration(
-                    labelText: 'Goal Title',
-                    hintText: 'e.g. Vacation, Emergency Fund',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Please enter a goal title';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Target Amount
-                TextFormField(
-                  controller: _targetAmountController,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: const InputDecoration(
-                    labelText: 'Target Amount',
-                    prefixText: '\$ ',
-                    border: OutlineInputBorder(),
-                  ),
-                  validator: (val) {
-                    if (val == null || val.trim().isEmpty) {
-                      return 'Please enter target amount';
-                    }
-                    final parsed = double.tryParse(val.replaceAll(',', ''));
-                    if (parsed == null || parsed <= 0) {
-                      return 'Target amount must be greater than zero';
-                    }
-                    return null;
-                  },
-                ),
-                const SizedBox(height: 16),
-
-                // Target Date (Optional)
-                InkWell(
-                  onTap: _pickDate,
-                  borderRadius: BorderRadius.circular(8),
-                  child: InputDecorator(
-                    decoration: InputDecoration(
-                      labelText: 'Target Deadline (Optional)',
-                      border: const OutlineInputBorder(),
-                      suffixIcon: _selectedTargetDate != null
-                          ? IconButton(
-                              icon: const Icon(Icons.clear, size: 18),
-                              onPressed: () => setState(() => _selectedTargetDate = null),
-                            )
-                          : const Icon(Icons.calendar_today_outlined),
-                    ),
-                    child: Text(
-                      _selectedTargetDate != null
-                          ? DateFormat.yMMMd().format(_selectedTargetDate!)
-                          : 'No deadline set',
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-
-                // Icon Selection
-                const Text('Icon', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: availableIcons.map((iconName) {
-                    final isSelected = iconName == _selectedIcon;
-                    return InkWell(
-                      onTap: () => setState(() => _selectedIcon = iconName),
-                      child: Container(
-                        padding: const EdgeInsets.all(8),
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: isSelected
-                                ? theme.colorScheme.primary
-                                : Colors.grey.shade300,
-                            width: isSelected ? 2 : 1,
-                          ),
-                          color: isSelected
-                              ? theme.colorScheme.primary.withAlpha(30)
-                              : null,
-                        ),
-                        child: Icon(_getIconData(iconName), size: 20),
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 16),
-
-                // Color Selection
-                const Text('Color', style: TextStyle(fontWeight: FontWeight.bold)),
-                const SizedBox(height: 8),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: availableColors.map((colorValue) {
-                    final isSelected = colorValue == _selectedColor;
-                    return InkWell(
-                      onTap: () => setState(() => _selectedColor = colorValue),
-                      child: Container(
-                        width: 32,
-                        height: 32,
-                        decoration: BoxDecoration(
-                          color: Color(colorValue),
-                          shape: BoxShape.circle,
-                          border: isSelected
-                              ? Border.all(color: Colors.black, width: 2.5)
-                              : null,
-                        ),
-                        child: isSelected
-                            ? const Icon(Icons.check, size: 18, color: Colors.white)
-                            : null,
-                      ),
-                    );
-                  }).toList(),
-                ),
-                const SizedBox(height: 24),
-
-                // Submit Button
-                FilledButton(
-                  onPressed: _submit,
-                  child: Text(isEditing ? 'Save Changes' : 'Create Goal'),
-                ),
-              ],
+    return AppBottomSheet(
+      title: isEditing ? 'Edit Savings Goal' : 'Create Savings Goal',
+      child: Form(
+        key: _formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Goal Name
+            TextFormField(
+              controller: _nameController,
+              decoration: const InputDecoration(
+                labelText: 'Goal Title',
+                hintText: 'e.g. Vacation, Emergency Fund',
+                border: OutlineInputBorder(),
+              ),
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Please enter a goal title';
+                }
+                return null;
+              },
             ),
-          ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Target Amount
+            MoneyInputField(
+              controller: _targetAmountController,
+              label: 'Target Amount',
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Target Date (Optional)
+            InkWell(
+              onTap: _pickDate,
+              borderRadius: BorderRadius.circular(8),
+              child: InputDecorator(
+                decoration: InputDecoration(
+                  labelText: 'Target Date (Optional)',
+                  border: const OutlineInputBorder(),
+                  suffixIcon: _selectedTargetDate != null
+                      ? IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () => setState(() => _selectedTargetDate = null),
+                        )
+                      : const Icon(Icons.calendar_today_outlined),
+                ),
+                child: Text(
+                  _selectedTargetDate != null
+                      ? DateFormat.yMMMd().format(_selectedTargetDate!)
+                      : 'No target deadline',
+                  style: _selectedTargetDate == null
+                      ? TextStyle(color: theme.colorScheme.onSurfaceVariant)
+                      : null,
+                ),
+              ),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Icon Picker
+            Text('Icon', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: availableIcons.map((iconName) {
+                final isSelected = _selectedIcon == iconName;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => setState(() => _selectedIcon = iconName),
+                  child: Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isSelected
+                          ? theme.colorScheme.primaryContainer
+                          : theme.colorScheme.surfaceContainerHighest,
+                    ),
+                    child: Icon(
+                      _getIconData(iconName),
+                      size: 20,
+                      color: isSelected
+                          ? theme.colorScheme.onPrimaryContainer
+                          : theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
+            // Color Picker
+            Text('Color', style: theme.textTheme.labelLarge),
+            const SizedBox(height: AppSpacing.sm),
+            Wrap(
+              spacing: 10,
+              runSpacing: 8,
+              children: availableColors.map((colorVal) {
+                final isSelected = _selectedColor == colorVal;
+                return InkWell(
+                  borderRadius: BorderRadius.circular(24),
+                  onTap: () => setState(() => _selectedColor = colorVal),
+                  child: Container(
+                    width: 36,
+                    height: 36,
+                    decoration: BoxDecoration(
+                      color: Color(colorVal),
+                      shape: BoxShape.circle,
+                      border: isSelected
+                          ? Border.all(color: theme.colorScheme.onSurface, width: 3)
+                          : null,
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+            const SizedBox(height: AppSpacing.xl),
+
+            // Action Button
+            FilledButton(
+              onPressed: _submit,
+              style: FilledButton.styleFrom(
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              child: Text(
+                isEditing ? 'Save Changes' : 'Create Goal',
+                style: const TextStyle(fontSize: 16),
+              ),
+            ),
+          ],
         ),
       ),
     );

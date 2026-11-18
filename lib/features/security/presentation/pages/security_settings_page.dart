@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../backup/presentation/pages/data_management_page.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../budgets/presentation/cubit/budgets_cubit.dart';
@@ -35,6 +36,7 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Enter 4-6 digit PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.pin_outlined),
                 ),
                 validator: (val) {
                   if (val == null || !RegExp(r'^\d{4,6}$').hasMatch(val)) {
@@ -43,7 +45,7 @@ class SecuritySettingsPage extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: confirmController,
                 keyboardType: TextInputType.number,
@@ -52,6 +54,7 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Confirm PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.check_outlined),
                 ),
                 validator: (val) {
                   if (val != pinController.text) {
@@ -102,7 +105,7 @@ class SecuritySettingsPage extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('Enter your current PIN to disable App Lock:'),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
               TextFormField(
                 controller: pinController,
                 keyboardType: TextInputType.number,
@@ -111,6 +114,7 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Current PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.pin_outlined),
                 ),
                 validator: (val) {
                   if (val == null || val.isEmpty) {
@@ -177,10 +181,11 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Current PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.pin_outlined),
                 ),
                 validator: (val) => val == null || val.isEmpty ? 'Enter current PIN' : null,
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: newPinController,
                 keyboardType: TextInputType.number,
@@ -189,6 +194,7 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'New 4-6 digit PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.lock_reset_outlined),
                 ),
                 validator: (val) {
                   if (val == null || !RegExp(r'^\d{4,6}$').hasMatch(val)) {
@@ -197,7 +203,7 @@ class SecuritySettingsPage extends StatelessWidget {
                   return null;
                 },
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
               TextFormField(
                 controller: confirmController,
                 keyboardType: TextInputType.number,
@@ -206,6 +212,7 @@ class SecuritySettingsPage extends StatelessWidget {
                 decoration: const InputDecoration(
                   labelText: 'Confirm New PIN',
                   border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.check_outlined),
                 ),
                 validator: (val) {
                   if (val != newPinController.text) {
@@ -261,8 +268,17 @@ class SecuritySettingsPage extends StatelessWidget {
       body: BlocBuilder<SecurityCubit, SecurityState>(
         builder: (context, state) {
           return ListView(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
             children: [
+              Text(
+                'AUTHENTICATION & LOCK',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -272,7 +288,14 @@ class SecuritySettingsPage extends StatelessWidget {
                 child: Column(
                   children: [
                     SwitchListTile(
-                      secondary: const Icon(Icons.lock_outline),
+                      secondary: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer.withAlpha(80),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.lock_outline, color: theme.colorScheme.primary),
+                      ),
                       title: const Text(
                         'App Lock',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -291,7 +314,14 @@ class SecuritySettingsPage extends StatelessWidget {
                     ),
                     const Divider(height: 1),
                     SwitchListTile(
-                      secondary: const Icon(Icons.fingerprint),
+                      secondary: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: theme.colorScheme.primaryContainer.withAlpha(80),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(Icons.fingerprint, color: theme.colorScheme.primary),
+                      ),
                       title: const Text(
                         'Biometric Unlock',
                         style: TextStyle(fontWeight: FontWeight.bold),
@@ -309,7 +339,14 @@ class SecuritySettingsPage extends StatelessWidget {
                     if (state.isAppLockEnabled && state.hasPinSet) ...[
                       const Divider(height: 1),
                       ListTile(
-                        leading: const Icon(Icons.pin_outlined),
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: theme.colorScheme.surfaceContainerHighest,
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(Icons.pin_outlined),
+                        ),
                         title: const Text(
                           'Change PIN',
                           style: TextStyle(fontWeight: FontWeight.bold),
@@ -322,7 +359,17 @@ class SecuritySettingsPage extends StatelessWidget {
                   ],
                 ),
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.xxl),
+
+              Text(
+                'DATA & STORAGE',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
               Card(
                 elevation: 0,
                 shape: RoundedRectangleBorder(
@@ -330,7 +377,14 @@ class SecuritySettingsPage extends StatelessWidget {
                   side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
                 ),
                 child: ListTile(
-                  leading: const Icon(Icons.backup_outlined),
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.backup_outlined),
+                  ),
                   title: const Text(
                     'Data Backup & Export',
                     style: TextStyle(fontWeight: FontWeight.bold),

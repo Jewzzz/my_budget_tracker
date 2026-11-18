@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../accounts/presentation/cubit/accounts_state.dart';
 import '../../../categories/domain/entities/category.dart';
@@ -140,71 +142,57 @@ class TransactionDetailsSheet extends StatelessWidget {
               titleText = cat?.name ?? 'Uncategorized';
             }
 
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-              decoration: BoxDecoration(
-                color: theme.scaffoldBackgroundColor,
-                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-              ),
+            return AppBottomSheet(
+              title: 'Transaction Details',
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Transaction Details',
-                        style: theme.textTheme.titleMedium?.copyWith(
-                          color: theme.colorScheme.onSurfaceVariant,
+                  // Header icon, title, and amount
+                  Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 24,
+                          backgroundColor: itemColor.withAlpha(35),
+                          child: Icon(iconData, color: itemColor, size: 28),
                         ),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.pop(context),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Header icon and title
-                  Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 24,
-                        backgroundColor: itemColor.withAlpha(35),
-                        child: Icon(iconData, color: itemColor, size: 28),
-                      ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              titleText,
-                              style: theme.textTheme.titleLarge?.copyWith(
-                                fontWeight: FontWeight.bold,
+                        const SizedBox(width: AppSpacing.md),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                titleText,
+                                style: theme.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
-                            ),
-                            Text(
-                              transaction.type.name[0].toUpperCase() + transaction.type.name.substring(1),
-                              style: theme.textTheme.bodyMedium?.copyWith(
-                                color: theme.colorScheme.onSurfaceVariant,
+                              Text(
+                                transaction.type.name[0].toUpperCase() + transaction.type.name.substring(1),
+                                style: theme.textTheme.bodySmall?.copyWith(
+                                  color: theme.colorScheme.onSurfaceVariant,
+                                ),
                               ),
-                            ),
-                          ],
+                            ],
+                          ),
                         ),
-                      ),
-                      Text(
-                        amountText,
-                        style: theme.textTheme.headlineSmall?.copyWith(
-                          fontWeight: FontWeight.bold,
-                          color: amountColor,
+                        Text(
+                          amountText,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: amountColor,
+                          ),
                         ),
-                      ),
-                    ],
+                      ],
+                    ),
                   ),
-                  const Divider(height: 32),
+                  const SizedBox(height: AppSpacing.lg),
 
                   // Details list
                   if (transaction.isTransfer) ...[
@@ -213,7 +201,7 @@ class TransactionDetailsSheet extends StatelessWidget {
                       label: 'Source Account',
                       value: acc?.name ?? 'Unknown',
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     _DetailRow(
                       icon: Icons.savings_outlined,
                       label: 'Destination Account',
@@ -225,28 +213,28 @@ class TransactionDetailsSheet extends StatelessWidget {
                       label: 'Account',
                       value: acc?.name ?? 'Unknown',
                     ),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     _DetailRow(
                       icon: Icons.category_outlined,
                       label: 'Category',
                       value: cat?.name ?? 'Uncategorized',
                     ),
                   ],
-                  const SizedBox(height: 12),
+                  const SizedBox(height: AppSpacing.md),
                   _DetailRow(
                     icon: Icons.calendar_today_outlined,
                     label: 'Date',
                     value: DateFormat.yMMMd().format(transaction.date),
                   ),
                   if (transaction.note != null && transaction.note!.isNotEmpty) ...[
-                    const SizedBox(height: 12),
+                    const SizedBox(height: AppSpacing.md),
                     _DetailRow(
                       icon: Icons.notes_outlined,
                       label: 'Note',
                       value: transaction.note!,
                     ),
                   ],
-                  const SizedBox(height: 28),
+                  const SizedBox(height: AppSpacing.xl),
 
                   // Action Buttons
                   Row(
@@ -261,15 +249,19 @@ class TransactionDetailsSheet extends StatelessWidget {
                           ),
                           style: OutlinedButton.styleFrom(
                             side: BorderSide(color: theme.colorScheme.error),
+                            padding: const EdgeInsets.symmetric(vertical: 14),
                           ),
                         ),
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: FilledButton.icon(
                           onPressed: () => _openEdit(context),
                           icon: const Icon(Icons.edit_outlined),
                           label: const Text('Edit'),
+                          style: FilledButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 14),
+                          ),
                         ),
                       ),
                     ],
@@ -301,7 +293,7 @@ class _DetailRow extends StatelessWidget {
     return Row(
       children: [
         Icon(icon, size: 20, color: theme.colorScheme.onSurfaceVariant),
-        const SizedBox(width: 12),
+        const SizedBox(width: AppSpacing.md),
         Text(
           label,
           style: theme.textTheme.bodyMedium?.copyWith(

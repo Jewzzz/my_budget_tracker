@@ -1,5 +1,7 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../cubit/security_cubit.dart';
 import '../cubit/security_state.dart';
 
@@ -72,55 +74,71 @@ class _LockScreenState extends State<LockScreen> {
               children: [
                 const Spacer(),
 
-                // Lock Icon & Header
+                // Security Shield / Lock Icon & Header
                 Container(
-                  padding: const EdgeInsets.all(20),
+                  padding: const EdgeInsets.all(22),
                   decoration: BoxDecoration(
-                    color: theme.colorScheme.primaryContainer.withAlpha(80),
+                    color: theme.colorScheme.primaryContainer.withAlpha(70),
                     shape: BoxShape.circle,
+                    border: Border.all(
+                      color: theme.colorScheme.primary.withAlpha(40),
+                      width: 1.5,
+                    ),
                   ),
                   child: Icon(
                     Icons.lock_outline,
-                    size: 48,
+                    size: 44,
                     color: theme.colorScheme.primary,
                   ),
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: AppSpacing.lg),
                 Text(
                   'Budget Tracker Locked',
                   style: theme.textTheme.headlineSmall?.copyWith(
                     fontWeight: FontWeight.bold,
+                    letterSpacing: -0.3,
                   ),
                 ),
-                const SizedBox(height: 8),
+                const SizedBox(height: AppSpacing.sm),
                 Text(
                   'Enter PIN to continue',
                   style: theme.textTheme.bodyMedium?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xxl),
 
                 // PIN Dots Indicator (4 dots)
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: List.generate(4, (index) {
                     final isFilled = _enteredPin.length > index;
-                    return Container(
+                    return AnimatedContainer(
+                      duration: const Duration(milliseconds: 150),
+                      curve: Curves.easeOutCubic,
                       margin: const EdgeInsets.symmetric(horizontal: 10),
-                      width: 16,
-                      height: 16,
+                      width: isFilled ? 18 : 16,
+                      height: isFilled ? 18 : 16,
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         color: isFilled
                             ? theme.colorScheme.primary
-                            : theme.colorScheme.outlineVariant.withAlpha(120),
+                            : theme.colorScheme.surfaceContainerHighest.withAlpha(120),
                         border: Border.all(
                           color: isFilled
                               ? theme.colorScheme.primary
-                              : theme.colorScheme.outline,
+                              : theme.colorScheme.outlineVariant,
                           width: 1.5,
                         ),
+                        boxShadow: isFilled
+                            ? [
+                                BoxShadow(
+                                  color: theme.colorScheme.primary.withAlpha(50),
+                                  blurRadius: 8,
+                                  spreadRadius: 1,
+                                ),
+                              ]
+                            : null,
                       ),
                     );
                   }),
@@ -128,7 +146,7 @@ class _LockScreenState extends State<LockScreen> {
 
                 // Error Message Display
                 if (state.errorMessage != null) ...[
-                  const SizedBox(height: 16),
+                  const SizedBox(height: AppSpacing.lg),
                   Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 24),
                     child: Text(
@@ -146,45 +164,77 @@ class _LockScreenState extends State<LockScreen> {
 
                 // Numeric Keypad (1-9, Bio, 0, Backspace)
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 40),
+                  padding: const EdgeInsets.symmetric(horizontal: 36),
                   child: Column(
                     children: [
                       _buildKeypadRow(['1', '2', '3']),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _buildKeypadRow(['4', '5', '6']),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       _buildKeypadRow(['7', '8', '9']),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: AppSpacing.md),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceEvenly,
                         children: [
                           // Biometric Button or Placeholder
                           SizedBox(
-                            width: 64,
-                            height: 64,
+                            width: 68,
+                            height: 68,
                             child: showBiometrics
-                                ? IconButton(
-                                    icon: Icon(
-                                      Icons.fingerprint,
-                                      size: 36,
-                                      color: theme.colorScheme.primary,
+                                ? Material(
+                                    color: Colors.transparent,
+                                    shape: const CircleBorder(),
+                                    clipBehavior: Clip.antiAlias,
+                                    child: InkWell(
+                                      onTap: () => context
+                                          .read<SecurityCubit>()
+                                          .unlockWithBiometrics(),
+                                      child: Container(
+                                        alignment: Alignment.center,
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: theme.colorScheme.primaryContainer.withAlpha(60),
+                                          border: Border.all(
+                                            color: theme.colorScheme.outlineVariant.withAlpha(80),
+                                            width: 1,
+                                          ),
+                                        ),
+                                        child: Icon(
+                                          Icons.fingerprint,
+                                          size: 34,
+                                          color: theme.colorScheme.primary,
+                                        ),
+                                      ),
                                     ),
-                                    onPressed: () => context
-                                        .read<SecurityCubit>()
-                                        .unlockWithBiometrics(),
                                   )
                                 : const SizedBox.shrink(),
                           ),
                           _buildKeypadButton('0'),
                           SizedBox(
-                            width: 64,
-                            height: 64,
-                            child: IconButton(
-                              icon: const Icon(
-                                Icons.backspace_outlined,
-                                size: 28,
+                            width: 68,
+                            height: 68,
+                            child: Material(
+                              color: Colors.transparent,
+                              shape: const CircleBorder(),
+                              clipBehavior: Clip.antiAlias,
+                              child: InkWell(
+                                onTap: _onBackspacePressed,
+                                child: Container(
+                                  alignment: Alignment.center,
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: theme.colorScheme.surfaceContainerHighest.withAlpha(80),
+                                    border: Border.all(
+                                      color: theme.colorScheme.outlineVariant.withAlpha(60),
+                                      width: 1,
+                                    ),
+                                  ),
+                                  child: const Icon(
+                                    Icons.backspace_outlined,
+                                    size: 26,
+                                  ),
+                                ),
                               ),
-                              onPressed: _onBackspacePressed,
                             ),
                           ),
                         ],
@@ -192,7 +242,7 @@ class _LockScreenState extends State<LockScreen> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 32),
+                const SizedBox(height: AppSpacing.xxl),
               ],
             ),
           ),
@@ -211,21 +261,32 @@ class _LockScreenState extends State<LockScreen> {
   Widget _buildKeypadButton(String digit) {
     final theme = Theme.of(context);
 
-    return InkResponse(
-      onTap: () => _onDigitPressed(digit),
-      radius: 36,
-      child: Container(
-        width: 64,
-        height: 64,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
-        ),
-        alignment: Alignment.center,
-        child: Text(
-          digit,
-          style: theme.textTheme.headlineMedium?.copyWith(
-            fontWeight: FontWeight.w600,
+    return SizedBox(
+      width: 68,
+      height: 68,
+      child: Material(
+        color: Colors.transparent,
+        shape: const CircleBorder(),
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: () => _onDigitPressed(digit),
+          child: Container(
+            alignment: Alignment.center,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(90),
+              border: Border.all(
+                color: theme.colorScheme.outlineVariant.withAlpha(60),
+                width: 1,
+              ),
+            ),
+            child: Text(
+              digit,
+              style: theme.textTheme.headlineMedium?.copyWith(
+                fontWeight: FontWeight.w600,
+                fontFeatures: const [FontFeature.tabularFigures()],
+              ),
+            ),
           ),
         ),
       ),

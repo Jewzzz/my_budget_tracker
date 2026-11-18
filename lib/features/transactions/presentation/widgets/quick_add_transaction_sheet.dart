@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/presentation/components/money_input_field.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
@@ -173,221 +177,248 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                   filteredCategories.isNotEmpty ? filteredCategories.first.id : null;
             }
 
-            return Padding(
-              padding: EdgeInsets.only(
-                left: 20,
-                right: 20,
-                top: 20,
-                bottom: MediaQuery.of(context).viewInsets.bottom + 20,
-              ),
+            return AppBottomSheet(
+              title: 'Add Transaction',
               child: Form(
                 key: _formKey,
-                child: SingleChildScrollView(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text('Add Transaction', style: theme.textTheme.titleLarge),
-                          IconButton(
-                            icon: const Icon(Icons.close),
-                            onPressed: () => Navigator.of(context).pop(),
-                          ),
-                        ],
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    // Expense / Income / Transfer Tabs
+                    Container(
+                      decoration: BoxDecoration(
+                        color: theme.colorScheme.surfaceContainerHighest,
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      const SizedBox(height: 12),
-
-                      // Expense / Income / Transfer Tabs
-                      Container(
-                        decoration: BoxDecoration(
-                          color: theme.colorScheme.surfaceContainerHighest,
+                      child: TabBar(
+                        controller: _tabController,
+                        indicatorSize: TabBarIndicatorSize.tab,
+                        dividerColor: Colors.transparent,
+                        indicator: BoxDecoration(
+                          color: _indicatorColor,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: TabBar(
-                          controller: _tabController,
-                          indicatorSize: TabBarIndicatorSize.tab,
-                          dividerColor: Colors.transparent,
-                          indicator: BoxDecoration(
-                            color: _indicatorColor,
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                          labelColor: Colors.white,
-                          unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
-                          tabs: const [
-                            Tab(text: 'Expense'),
-                            Tab(text: 'Income'),
-                            Tab(text: 'Transfer'),
-                          ],
-                        ),
+                        labelColor: Colors.white,
+                        unselectedLabelColor: theme.colorScheme.onSurfaceVariant,
+                        tabs: const [
+                          Tab(text: 'Expense'),
+                          Tab(text: 'Income'),
+                          Tab(text: 'Transfer'),
+                        ],
                       ),
-                      const SizedBox(height: 16),
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
 
-                      // Amount Field with auto-focus
-                      TextFormField(
-                        controller: _amountController,
-                        autofocus: true,
-                        keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                        style: theme.textTheme.headlineMedium?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                        decoration: InputDecoration(
-                          labelText: 'Amount',
-                          prefixText: '\$ ',
-                          prefixStyle: theme.textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                          border: const OutlineInputBorder(),
-                        ),
-                        validator: (val) {
-                          if (val == null || val.trim().isEmpty) {
-                            return 'Please enter an amount';
-                          }
-                          final parsed = double.tryParse(val.replaceAll(',', ''));
-                          if (parsed == null || parsed <= 0) {
-                            return 'Please enter an amount greater than zero';
-                          }
-                          return null;
-                        },
+                    // Amount Field with auto-focus
+                    MoneyInputField(
+                      controller: _amountController,
+                      autofocus: true,
+                      label: 'Amount',
+                    ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Source Account Selector
+                    DropdownButtonFormField<String>(
+                      value: _selectedAccountId,
+                      decoration: InputDecoration(
+                        labelText: _currentType == TransactionType.transfer
+                            ? 'Source Account'
+                            : 'Account',
+                        border: const OutlineInputBorder(),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                       ),
-                      const SizedBox(height: 16),
+                      items: accounts
+                          .map(
+                            (acc) => DropdownMenuItem(
+                              value: acc.id,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 24,
+                                    height: 24,
+                                    decoration: BoxDecoration(
+                                      color: Color(acc.color).withAlpha(40),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                      size: 14,
+                                      color: Color(acc.color),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(
+                                    child: Text(
+                                      '${acc.name} (${acc.currentBalance.format()})',
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          )
+                          .toList(),
+                      onChanged: (val) {
+                        setState(() {
+                          _selectedAccountId = val;
+                        });
+                      },
+                      validator: (val) {
+                        if (val == null || val.isEmpty) {
+                          return 'Please select an account';
+                        }
+                        return null;
+                      },
+                    ),
 
-                      // Source Account Selector
+                    // Destination Account Selector (Transfer only)
+                    if (_currentType == TransactionType.transfer) ...[
+                      const SizedBox(height: AppSpacing.lg),
                       DropdownButtonFormField<String>(
-                        initialValue: _selectedAccountId,
-                        decoration: InputDecoration(
-                          labelText: _currentType == TransactionType.transfer
-                              ? 'Source Account'
-                              : 'Account',
-                          border: const OutlineInputBorder(),
+                        value: _selectedDestinationAccountId,
+                        decoration: const InputDecoration(
+                          labelText: 'Destination Account',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
                         items: accounts
                             .map(
                               (acc) => DropdownMenuItem(
                                 value: acc.id,
-                                child: Text('${acc.name} (${acc.currentBalance.format()})'),
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Container(
+                                      width: 24,
+                                      height: 24,
+                                      decoration: BoxDecoration(
+                                        color: Color(acc.color).withAlpha(40),
+                                        borderRadius: BorderRadius.circular(6),
+                                      ),
+                                      child: Icon(
+                                        Icons.account_balance_wallet_outlined,
+                                        size: 14,
+                                        color: Color(acc.color),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: Text(
+                                        '${acc.name} (${acc.currentBalance.format()})',
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             )
                             .toList(),
                         onChanged: (val) {
                           setState(() {
-                            _selectedAccountId = val;
+                            _selectedDestinationAccountId = val;
                           });
                         },
                         validator: (val) {
                           if (val == null || val.isEmpty) {
-                            return 'Please select an account';
+                            return 'Please select a destination account';
+                          }
+                          if (val == _selectedAccountId) {
+                            return 'Source and destination accounts must be distinct';
                           }
                           return null;
                         },
                       ),
+                    ],
 
-                      // Destination Account Selector (Transfer only)
-                      if (_currentType == TransactionType.transfer) ...[
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          initialValue: _selectedDestinationAccountId,
-                          decoration: const InputDecoration(
-                            labelText: 'Destination Account',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: accounts
-                              .map(
-                                (acc) => DropdownMenuItem(
-                                  value: acc.id,
-                                  child: Text('${acc.name} (${acc.currentBalance.format()})'),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _selectedDestinationAccountId = val;
-                            });
-                          },
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              return 'Please select a destination account';
-                            }
-                            if (val == _selectedAccountId) {
-                              return 'Source and destination accounts must be distinct';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-
-                      // Category Selector (Expense & Income only)
-                      if (_currentType != TransactionType.transfer) ...[
-                        const SizedBox(height: 16),
-                        DropdownButtonFormField<String>(
-                          key: ValueKey('category-picker-$_selectedCategoryId'),
-                          initialValue: filteredCategories
-                                  .any((c) => c.id == _selectedCategoryId)
-                              ? _selectedCategoryId
-                              : (filteredCategories.isNotEmpty
-                                  ? filteredCategories.first.id
-                                  : null),
-                          decoration: const InputDecoration(
-                            labelText: 'Category',
-                            border: OutlineInputBorder(),
-                          ),
-                          items: filteredCategories
-                              .map(
-                                (cat) => DropdownMenuItem(
-                                  value: cat.id,
-                                  child: Text(cat.name),
-                                ),
-                              )
-                              .toList(),
-                          onChanged: (val) {
-                            setState(() {
-                              _selectedCategoryId = val;
-                            });
-                          },
-                          validator: (val) {
-                            if (val == null || val.isEmpty) {
-                              return 'Please select a category';
-                            }
-                            return null;
-                          },
-                        ),
-                      ],
-                      const SizedBox(height: 16),
-
-                      // Date & Note Row
-                      Row(
-                        children: [
-                          Expanded(
-                            child: OutlinedButton.icon(
-                              icon: const Icon(Icons.calendar_today, size: 18),
-                              label: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
-                              onPressed: _pickDate,
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 12),
-
-                      TextFormField(
-                        controller: _noteController,
+                    // Category Selector (Expense & Income only)
+                    if (_currentType != TransactionType.transfer) ...[
+                      const SizedBox(height: AppSpacing.lg),
+                      DropdownButtonFormField<String>(
+                        key: ValueKey('category-picker-$_selectedCategoryId'),
+                        value: filteredCategories
+                                .any((c) => c.id == _selectedCategoryId)
+                            ? _selectedCategoryId
+                            : (filteredCategories.isNotEmpty
+                                ? filteredCategories.first.id
+                                : null),
                         decoration: const InputDecoration(
-                          labelText: 'Note (Optional)',
-                          hintText: 'e.g. ATM withdrawal / savings transfer',
+                          labelText: 'Category',
                           border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
-                      ),
-                      const SizedBox(height: 20),
-
-                      FilledButton(
-                        onPressed: () => _submit(accounts),
-                        style: FilledButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
-                        ),
-                        child: const Text('Save Transaction', style: TextStyle(fontSize: 16)),
+                        items: filteredCategories
+                            .map(
+                              (cat) => DropdownMenuItem(
+                                value: cat.id,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CategoryIconBadge(
+                                      iconName: cat.icon,
+                                      color: Color(cat.color),
+                                      size: 24,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Text(
+                                        cat.name,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          setState(() {
+                            _selectedCategoryId = val;
+                          });
+                        },
+                        validator: (val) {
+                          if (val == null || val.isEmpty) {
+                            return 'Please select a category';
+                          }
+                          return null;
+                        },
                       ),
                     ],
-                  ),
+                    const SizedBox(height: AppSpacing.lg),
+
+                    // Date & Note Row
+                    Row(
+                      children: [
+                        Expanded(
+                          child: OutlinedButton.icon(
+                            icon: const Icon(Icons.calendar_today, size: 18),
+                            label: Text(DateFormat('yyyy-MM-dd').format(_selectedDate)),
+                            onPressed: _pickDate,
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: AppSpacing.md),
+
+                    TextFormField(
+                      controller: _noteController,
+                      decoration: const InputDecoration(
+                        labelText: 'Note (Optional)',
+                        hintText: 'e.g. ATM withdrawal / savings transfer',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                    const SizedBox(height: AppSpacing.xl),
+
+                    FilledButton(
+                      onPressed: () => _submit(accounts),
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
+                      child: const Text('Save Transaction', style: TextStyle(fontSize: 16)),
+                    ),
+                  ],
                 ),
               ),
             );

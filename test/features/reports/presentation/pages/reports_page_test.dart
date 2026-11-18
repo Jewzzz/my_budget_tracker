@@ -87,10 +87,16 @@ void main() {
       ],
     );
 
+    setUpAll(() {
+      registerFallbackValue(ReportsTimeframe.thisMonth);
+    });
+
     setUp(() {
       mockReportsCubit = MockReportsCubit();
       when(() => mockReportsCubit.currentTimeframe).thenReturn(ReportsTimeframe.thisMonth);
       when(() => mockReportsCubit.currentView).thenReturn(ReportsView.cashFlow);
+      when(() => mockReportsCubit.changeTimeframe(any(), customRange: any(named: 'customRange')))
+          .thenAnswer((_) async {});
     });
 
     Widget buildTestWidget(ReportsState state) {
@@ -226,6 +232,91 @@ void main() {
       await tester.pump();
 
       verify(() => mockReportsCubit.changeView(ReportsView.categoryBreakdown)).called(1);
+    });
+
+    testWidgets('tapping timeframe chip triggers cubit.changeTimeframe', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          ReportsLoaded(
+            timeframe: ReportsTimeframe.thisMonth,
+            selectedView: ReportsView.cashFlow,
+            cashFlowReport: tCashFlow,
+            categoryBreakdownReport: tCategoryBreakdown,
+            netWorthTrendReport: tNetWorthTrend,
+          ),
+        ),
+      );
+
+      await tester.tap(find.text('Last Month'));
+      await tester.pump();
+
+      verify(() => mockReportsCubit.changeTimeframe(ReportsTimeframe.lastMonth)).called(1);
+    });
+
+    testWidgets('renders empty state when category breakdown has no items', (tester) async {
+      when(() => mockReportsCubit.currentView).thenReturn(ReportsView.categoryBreakdown);
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          ReportsLoaded(
+            timeframe: ReportsTimeframe.thisMonth,
+            selectedView: ReportsView.categoryBreakdown,
+            cashFlowReport: tCashFlow,
+            categoryBreakdownReport: const CategoryBreakdownReport(
+              totalExpense: Money.zero,
+              items: [],
+            ),
+            netWorthTrendReport: tNetWorthTrend,
+          ),
+        ),
+      );
+
+      expect(find.text('No Expense Data'), findsOneWidget);
+      expect(find.text('No expenses recorded for this timeframe.'), findsOneWidget);
+    });
+
+    testWidgets('renders empty state when cash flow has no monthly data points', (tester) async {
+      await tester.pumpWidget(
+        buildTestWidget(
+          ReportsLoaded(
+            timeframe: ReportsTimeframe.thisMonth,
+            selectedView: ReportsView.cashFlow,
+            cashFlowReport: const CashFlowReport(
+              totalIncome: Money.zero,
+              totalExpense: Money.zero,
+              netCashFlow: Money.zero,
+              savingsRate: 0.0,
+              monthlyData: [],
+            ),
+            categoryBreakdownReport: tCategoryBreakdown,
+            netWorthTrendReport: tNetWorthTrend,
+          ),
+        ),
+      );
+
+      expect(find.text('No monthly transactions recorded'), findsOneWidget);
+    });
+
+    testWidgets('renders empty state when net worth has no checkpoint data points', (tester) async {
+      when(() => mockReportsCubit.currentView).thenReturn(ReportsView.netWorth);
+
+      await tester.pumpWidget(
+        buildTestWidget(
+          ReportsLoaded(
+            timeframe: ReportsTimeframe.thisMonth,
+            selectedView: ReportsView.netWorth,
+            cashFlowReport: tCashFlow,
+            categoryBreakdownReport: tCategoryBreakdown,
+            netWorthTrendReport: const NetWorthTrendReport(
+              currentNetWorth: Money.zero,
+              netChange: Money.zero,
+              points: [],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('No net worth checkpoints available'), findsOneWidget);
     });
   });
 }

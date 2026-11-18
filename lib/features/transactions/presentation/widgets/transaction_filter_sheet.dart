@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../accounts/presentation/cubit/accounts_state.dart';
 import '../../../categories/domain/entities/category.dart';
@@ -123,14 +126,33 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
       expand: false,
       builder: (context, scrollController) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
           decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: theme.colorScheme.surface,
+            borderRadius: AppRadius.sheetBorder,
+          ),
+          padding: EdgeInsets.only(
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            top: AppSpacing.md,
+            bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
           ),
           child: ListView(
             controller: scrollController,
             children: [
+              // Drag handle pill
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withAlpha(60),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Header
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -142,18 +164,19 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
+                    visualDensity: VisualDensity.compact,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
               // Date Range Preset Chips
               Text(
                 'Date Range',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 8,
                 runSpacing: 8,
@@ -184,14 +207,14 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
               // Transaction Type Chips
               Text(
                 'Transaction Type',
                 style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.sm),
               Wrap(
                 spacing: 8,
                 children: [
@@ -217,7 +240,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
               // Account Selector
               BlocBuilder<AccountsCubit, AccountsState>(
@@ -230,12 +253,12 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                         'Account',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       DropdownButtonFormField<String?>(
-                        initialValue: _selectedAccountId,
+                        value: _selectedAccountId,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
                         items: [
                           const DropdownMenuItem(
@@ -245,7 +268,26 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                           ...accounts.map(
                             (a) => DropdownMenuItem(
                               value: a.id,
-                              child: Text(a.name),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Container(
+                                    width: 20,
+                                    height: 20,
+                                    decoration: BoxDecoration(
+                                      color: Color(a.color).withAlpha(40),
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                    child: Icon(
+                                      Icons.account_balance_wallet_outlined,
+                                      size: 12,
+                                      color: Color(a.color),
+                                    ),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(child: Text(a.name, overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -255,7 +297,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                   );
                 },
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: AppSpacing.xl),
 
               // Category Selector
               BlocBuilder<TransactionsCubit, TransactionsState>(
@@ -268,14 +310,14 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                         'Category',
                         style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: AppSpacing.sm),
                       DropdownButtonFormField<String?>(
-                        initialValue: categories.any((c) => c.id == _selectedCategoryId)
+                        value: categories.any((c) => c.id == _selectedCategoryId)
                             ? _selectedCategoryId
                             : null,
                         decoration: const InputDecoration(
                           border: OutlineInputBorder(),
-                          contentPadding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                         ),
                         items: [
                           const DropdownMenuItem(
@@ -285,7 +327,18 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                           ...categories.map(
                             (c) => DropdownMenuItem(
                               value: c.id,
-                              child: Text(c.name),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  CategoryIconBadge(
+                                    iconName: c.icon,
+                                    color: Color(c.color),
+                                    size: 20,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Flexible(child: Text(c.name, overflow: TextOverflow.ellipsis)),
+                                ],
+                              ),
                             ),
                           ),
                         ],
@@ -295,7 +348,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                   );
                 },
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: AppSpacing.hero),
 
               // Action Buttons
               Row(
@@ -306,10 +359,13 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                         context.read<TransactionsCubit>().clearFilter();
                         Navigator.pop(context);
                       },
+                      style: OutlinedButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                       child: const Text('Reset All'),
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: AppSpacing.md),
                   Expanded(
                     child: FilledButton(
                       onPressed: () {
@@ -328,6 +384,9 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                         context.read<TransactionsCubit>().updateFilter(newFilter);
                         Navigator.pop(context);
                       },
+                      style: FilledButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                      ),
                       child: const Text('Apply Filters'),
                     ),
                   ),

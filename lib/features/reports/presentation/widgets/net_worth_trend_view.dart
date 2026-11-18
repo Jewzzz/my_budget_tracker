@@ -1,7 +1,11 @@
 import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/value_objects/money.dart';
 import '../../domain/entities/net_worth_trend_report.dart';
 
 class NetWorthTrendView extends StatelessWidget {
@@ -16,10 +20,9 @@ class NetWorthTrendView extends StatelessWidget {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isChangePositive = !report.netChange.isNegative;
-    final changePrefix = isChangePositive ? '+' : '';
 
     return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
       children: [
         // Summary Metrics Cards (2x1)
         Row(
@@ -28,61 +31,55 @@ class NetWorthTrendView extends StatelessWidget {
               child: _buildMetricCard(
                 context,
                 title: 'Current Net Worth',
-                amount: report.currentNetWorth.format(),
+                amount: report.currentNetWorth,
                 color: theme.colorScheme.primary,
                 icon: Icons.account_balance,
               ),
             ),
-            const SizedBox(width: 12),
+            const SizedBox(width: AppSpacing.md),
             Expanded(
               child: _buildMetricCard(
                 context,
                 title: 'Net Change',
-                amount: '$changePrefix${report.netChange.format()}',
+                amount: report.netChange,
+                showSign: true,
                 color: isChangePositive ? AppColors.income : AppColors.expense,
                 icon: isChangePositive ? Icons.trending_up : Icons.trending_down,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 24),
+        const SizedBox(height: AppSpacing.xl),
 
         // Line Chart Card
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  'Net Worth Trajectory',
-                  style: theme.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'Net Worth Trajectory',
+                style: theme.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.bold,
                 ),
-                const SizedBox(height: 24),
-                SizedBox(
-                  height: 240,
-                  child: report.points.isEmpty
-                      ? Center(
-                          child: Text(
-                            'No net worth checkpoints available',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
-                            ),
+              ),
+              const SizedBox(height: AppSpacing.xl),
+              SizedBox(
+                height: 240,
+                child: report.points.isEmpty
+                    ? Center(
+                        child: Text(
+                          'No net worth checkpoints available',
+                          style: theme.textTheme.bodyMedium?.copyWith(
+                            color: theme.colorScheme.onSurfaceVariant,
                           ),
-                        )
-                      : LineChart(
-                          _buildLineChartData(context),
                         ),
-                ),
-              ],
-            ),
+                      )
+                    : LineChart(
+                        _buildLineChartData(context),
+                      ),
+              ),
+            ],
           ),
         ),
       ],
@@ -92,55 +89,52 @@ class NetWorthTrendView extends StatelessWidget {
   Widget _buildMetricCard(
     BuildContext context, {
     required String title,
-    required String amount,
+    required Money amount,
+    bool showSign = false,
     required Color color,
     required IconData icon,
   }) {
     final theme = Theme.of(context);
 
-    return Card(
-      elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                CircleAvatar(
-                  radius: 12,
-                  backgroundColor: color.withAlpha(35),
-                  child: Icon(icon, size: 14, color: color),
+    return AppCard(
+      padding: const EdgeInsets.all(AppSpacing.md),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                width: 26,
+                height: 26,
+                decoration: BoxDecoration(
+                  color: color.withAlpha(25),
+                  shape: BoxShape.circle,
                 ),
-                const SizedBox(width: 6),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Text(
-              amount,
-              style: theme.textTheme.titleMedium?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: color,
+                child: Icon(icon, size: 14, color: color),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              const SizedBox(width: AppSpacing.xs),
+              Expanded(
+                child: Text(
+                  title,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          MoneyText(
+            amount: amount,
+            showSign: showSign,
+            style: theme.textTheme.titleMedium?.copyWith(
+              fontWeight: FontWeight.bold,
+              color: color,
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -174,6 +168,10 @@ class NetWorthTrendView extends StatelessWidget {
       maxY: maxY,
       lineTouchData: LineTouchData(
         touchTooltipData: LineTouchTooltipData(
+          getTooltipColor: (_) => theme.colorScheme.surfaceContainerHighest,
+          tooltipBorder: BorderSide(
+            color: theme.colorScheme.outlineVariant.withAlpha(120),
+          ),
           getTooltipItems: (touchedSpots) {
             return touchedSpots.map((spot) {
               final idx = spot.x.toInt();
@@ -181,7 +179,11 @@ class NetWorthTrendView extends StatelessWidget {
                 final pt = points[idx];
                 return LineTooltipItem(
                   '${pt.label}\n${pt.netWorth.format()}',
-                  const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                  TextStyle(
+                    color: theme.colorScheme.onSurface,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                  ),
                 );
               }
               return null;
@@ -200,7 +202,10 @@ class NetWorthTrendView extends StatelessWidget {
               if (val < 0) return const SizedBox.shrink();
               return Text(
                 '\$${val >= 1000 ? "${(val / 1000).toStringAsFixed(0)}k" : val.toStringAsFixed(0)}',
-                style: const TextStyle(fontSize: 10),
+                style: TextStyle(
+                  fontSize: 10,
+                  color: theme.colorScheme.onSurfaceVariant,
+                ),
               );
             },
           ),
@@ -211,7 +216,6 @@ class NetWorthTrendView extends StatelessWidget {
             getTitlesWidget: (val, meta) {
               final idx = val.toInt();
               if (idx >= 0 && idx < points.length) {
-                // Show title on every 1st, middle, and last point if many
                 if (points.length > 6 && idx % 2 != 0 && idx != points.length - 1) {
                   return const SizedBox.shrink();
                 }
@@ -219,7 +223,11 @@ class NetWorthTrendView extends StatelessWidget {
                   padding: const EdgeInsets.only(top: 6),
                   child: Text(
                     points[idx].label,
-                    style: const TextStyle(fontSize: 10, fontWeight: FontWeight.w500),
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 );
               }
@@ -228,7 +236,14 @@ class NetWorthTrendView extends StatelessWidget {
           ),
         ),
       ),
-      gridData: const FlGridData(show: true, drawVerticalLine: false),
+      gridData: FlGridData(
+        show: true,
+        drawVerticalLine: false,
+        getDrawingHorizontalLine: (val) => FlLine(
+          color: theme.colorScheme.outlineVariant.withAlpha(40),
+          strokeWidth: 1,
+        ),
+      ),
       borderData: FlBorderData(show: false),
       lineBarsData: [
         LineChartBarData(
@@ -246,8 +261,8 @@ class NetWorthTrendView extends StatelessWidget {
               begin: Alignment.topCenter,
               end: Alignment.bottomCenter,
               colors: [
-                primaryColor.withAlpha(70),
-                primaryColor.withAlpha(5),
+                primaryColor.withAlpha(60),
+                primaryColor.withAlpha(0),
               ],
             ),
           ),

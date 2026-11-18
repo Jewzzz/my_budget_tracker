@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
@@ -85,124 +88,108 @@ class _DepositWithdrawSheetState extends State<DepositWithdrawSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     final isDeposit = widget.isDeposit;
 
-    return Padding(
-      padding: EdgeInsets.only(
-        bottom: MediaQuery.of(context).viewInsets.bottom,
-      ),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-        decoration: BoxDecoration(
-          color: theme.scaffoldBackgroundColor,
-          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-        ),
-        child: SingleChildScrollView(
+    return BlocBuilder<AccountsCubit, AccountsState>(
+      builder: (context, accState) {
+        final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
+
+        if (_selectedAccountId == null && accounts.isNotEmpty) {
+          _selectedAccountId = accounts.first.id;
+        }
+
+        return AppBottomSheet(
+          title: isDeposit
+              ? 'Deposit to ${widget.goal.name}'
+              : 'Withdraw from ${widget.goal.name}',
           child: Form(
             key: _formKey,
             child: Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      isDeposit ? 'Deposit to Goal' : 'Withdraw from Goal',
-                      style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      onPressed: () => Navigator.pop(context),
-                    ),
-                  ],
-                ),
-                Text(
-                  widget.goal.name,
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: 16),
-
                 // Account Selector
-                BlocBuilder<AccountsCubit, AccountsState>(
-                  builder: (context, accState) {
-                    final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
-
-                    return DropdownButtonFormField<String>(
-                      initialValue: _selectedAccountId,
-                      decoration: InputDecoration(
-                        labelText: isDeposit ? 'Funding Account' : 'Destination Account',
-                        border: const OutlineInputBorder(),
-                      ),
-                      items: accounts
-                          .map(
-                            (a) => DropdownMenuItem(
-                              value: a.id,
-                              child: Text('${a.name} (${a.currentBalance.format()})'),
-                            ),
-                          )
-                          .toList(),
-                      onChanged: (val) => setState(() => _selectedAccountId = val),
-                      validator: (val) => val == null ? 'Please select an account' : null,
-                    );
+                DropdownButtonFormField<String>(
+                  value: accounts.any((a) => a.id == _selectedAccountId) ? _selectedAccountId : null,
+                  decoration: InputDecoration(
+                    labelText: isDeposit ? 'From Account' : 'To Account',
+                    border: const OutlineInputBorder(),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  ),
+                  items: accounts
+                      .map(
+                        (a) => DropdownMenuItem(
+                          value: a.id,
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: BoxDecoration(
+                                  color: Color(a.color).withAlpha(40),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Icon(
+                                  Icons.account_balance_wallet_outlined,
+                                  size: 14,
+                                  color: Color(a.color),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Flexible(
+                                child: Text(
+                                  '${a.name} (${a.currentBalance.format()})',
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedAccountId = val);
                   },
+                  validator: (val) => val == null ? 'Please select an account' : null,
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
-                // Amount Field
-                TextFormField(
+                // Amount
+                MoneyInputField(
                   controller: _amountController,
                   autofocus: true,
-                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                  decoration: InputDecoration(
-                    labelText: 'Amount',
-                    prefixText: '\$ ',
-                    border: const OutlineInputBorder(),
-                    helperText: !isDeposit
-                        ? 'Max withdrawable: ${widget.goal.savedAmount.format()}'
-                        : null,
-                  ),
-                  validator: (value) {
-                    if (value == null || value.trim().isEmpty) {
-                      return 'Please enter an amount';
-                    }
-                    final parsed = double.tryParse(value.replaceAll(',', ''));
-                    if (parsed == null || parsed <= 0) {
-                      return 'Amount must be greater than zero';
-                    }
-                    return null;
-                  },
+                  label: 'Amount',
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: AppSpacing.lg),
 
-                // Note Field
+                // Note
                 TextFormField(
                   controller: _noteController,
                   decoration: const InputDecoration(
                     labelText: 'Note (Optional)',
+                    hintText: 'e.g. Monthly contribution / milestone reward',
                     border: OutlineInputBorder(),
                   ),
                 ),
-                const SizedBox(height: 24),
+                const SizedBox(height: AppSpacing.xl),
 
                 // Submit Button
-                BlocBuilder<AccountsCubit, AccountsState>(
-                  builder: (context, accState) {
-                    final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
-                    return FilledButton(
-                      onPressed: () => _submit(accounts),
-                      child: Text(isDeposit ? 'Deposit Funds' : 'Withdraw Funds'),
-                    );
-                  },
+                FilledButton(
+                  onPressed: () => _submit(accounts),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: Text(
+                    isDeposit ? 'Deposit' : 'Withdraw',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
               ],
             ),
           ),
-        ),
-      ),
+        );
+      },
     );
   }
 }

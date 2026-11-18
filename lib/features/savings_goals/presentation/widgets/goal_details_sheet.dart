@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_radius.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../accounts/presentation/cubit/accounts_state.dart';
 import '../../domain/entities/goal_contribution.dart';
@@ -75,14 +77,33 @@ class GoalDetailsSheet extends StatelessWidget {
       expand: false,
       builder: (context, scrollController) {
         return Container(
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
           decoration: BoxDecoration(
-            color: theme.scaffoldBackgroundColor,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+            color: theme.colorScheme.surface,
+            borderRadius: AppRadius.sheetBorder,
+          ),
+          padding: EdgeInsets.only(
+            left: AppSpacing.xl,
+            right: AppSpacing.xl,
+            top: AppSpacing.md,
+            bottom: MediaQuery.of(context).viewInsets.bottom + AppSpacing.xl,
           ),
           child: ListView(
             controller: scrollController,
             children: [
+              // Drag handle pill
+              Center(
+                child: Container(
+                  width: 36,
+                  height: 4,
+                  margin: const EdgeInsets.only(bottom: AppSpacing.md),
+                  decoration: BoxDecoration(
+                    color: theme.colorScheme.onSurfaceVariant.withAlpha(60),
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+
+              // Title and Close
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -94,11 +115,24 @@ class GoalDetailsSheet extends StatelessWidget {
                   ),
                   IconButton(
                     icon: const Icon(Icons.close),
+                    visualDensity: VisualDensity.compact,
                     onPressed: () => Navigator.pop(context),
                   ),
                 ],
               ),
-              const SizedBox(height: 8),
+              const SizedBox(height: AppSpacing.md),
+
+              // Progress Bar
+              ClipRRect(
+                borderRadius: BorderRadius.circular(4),
+                child: LinearProgressIndicator(
+                  value: goal.progressPercentage.clamp(0.0, 1.0),
+                  minHeight: 8,
+                  backgroundColor: theme.colorScheme.surfaceContainerHighest,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(goal.color)),
+                ),
+              ),
+              const SizedBox(height: AppSpacing.md),
 
               // Target vs Saved Summary
               Row(
@@ -119,7 +153,7 @@ class GoalDetailsSheet extends StatelessWidget {
                   ),
                 ],
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: AppSpacing.lg),
 
               // Action Buttons
               Row(
@@ -131,7 +165,7 @@ class GoalDetailsSheet extends StatelessWidget {
                       label: const Text('Edit'),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   Expanded(
                     child: OutlinedButton.icon(
                       onPressed: () {
@@ -152,7 +186,7 @@ class GoalDetailsSheet extends StatelessWidget {
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: AppSpacing.sm),
                   IconButton.outlined(
                     onPressed: () => _confirmDelete(context),
                     icon: Icon(Icons.delete_outline, color: theme.colorScheme.error),
@@ -169,7 +203,7 @@ class GoalDetailsSheet extends StatelessWidget {
                   fontWeight: FontWeight.bold,
                 ),
               ),
-              const SizedBox(height: 12),
+              const SizedBox(height: AppSpacing.md),
 
               StreamBuilder<List<GoalContribution>>(
                 stream: repo.watchContributions(goal.id),

@@ -1,6 +1,11 @@
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/presentation/components/app_card.dart';
+import '../../../../core/presentation/components/app_empty_state.dart';
+import '../../../../core/presentation/components/category_icon_badge.dart';
+import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/category_breakdown_report.dart';
 
 class CategoryBreakdownView extends StatefulWidget {
@@ -18,171 +23,107 @@ class CategoryBreakdownView extends StatefulWidget {
 class _CategoryBreakdownViewState extends State<CategoryBreakdownView> {
   int _touchedIndex = -1;
 
-  IconData _getCategoryIcon(String iconName) {
-    switch (iconName) {
-      case 'shopping_cart':
-        return Icons.shopping_cart_outlined;
-      case 'restaurant':
-        return Icons.restaurant_outlined;
-      case 'home':
-        return Icons.home_outlined;
-      case 'directions_car':
-        return Icons.directions_car_outlined;
-      case 'bolt':
-        return Icons.bolt_outlined;
-      case 'movie':
-        return Icons.movie_outlined;
-      case 'medical_services':
-        return Icons.medical_services_outlined;
-      case 'school':
-        return Icons.school_outlined;
-      case 'work':
-        return Icons.work_outline;
-      case 'savings':
-        return Icons.savings_outlined;
-      default:
-        return Icons.category_outlined;
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final report = widget.report;
 
     if (report.items.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(32),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      return const Center(
+        child: AppEmptyState(
+          icon: Icons.pie_chart_outline,
+          title: 'No Expense Data',
+          message: 'No expenses recorded for this timeframe.',
+        ),
+      );
+    }
+
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: AppSpacing.lg, vertical: AppSpacing.sm),
+      children: [
+        // Total Expense Overview Banner
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Icon(
-                Icons.pie_chart_outline,
-                size: 64,
-                color: theme.colorScheme.onSurfaceVariant.withAlpha(120),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Total Expenses',
+                    style: theme.textTheme.bodySmall?.copyWith(
+                      color: theme.colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  MoneyText(
+                    amount: report.totalExpense,
+                    color: AppColors.expense,
+                    style: theme.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 16),
               Text(
-                'No Expense Data',
-                style: theme.textTheme.titleMedium?.copyWith(
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'No expenses recorded for this timeframe.',
-                textAlign: TextAlign.center,
+                '${report.items.length} Categories',
                 style: theme.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
                   color: theme.colorScheme.onSurfaceVariant,
                 ),
               ),
             ],
           ),
         ),
-      );
-    }
-
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      children: [
-        // Total Expense Overview Banner
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Total Expenses',
-                      style: theme.textTheme.bodySmall?.copyWith(
-                        color: theme.colorScheme.onSurfaceVariant,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      report.totalExpense.format(),
-                      style: theme.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.expense,
-                      ),
-                    ),
-                  ],
-                ),
-                Text(
-                  '${report.items.length} Categories',
-                  style: theme.textTheme.bodyMedium?.copyWith(
-                    fontWeight: FontWeight.w600,
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // Interactive Donut Chart
-        Card(
-          elevation: 0,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-            side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: SizedBox(
-              height: 220,
-              child: PieChart(
-                PieChartData(
-                  pieTouchData: PieTouchData(
-                    touchCallback: (FlTouchEvent event, pieTouchResponse) {
-                      setState(() {
-                        if (!event.isInterestedForInteractions ||
-                            pieTouchResponse == null ||
-                            pieTouchResponse.touchedSection == null) {
-                          _touchedIndex = -1;
-                          return;
-                        }
-                        _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
-                      });
-                    },
-                  ),
-                  borderData: FlBorderData(show: false),
-                  sectionsSpace: 2,
-                  centerSpaceRadius: 45,
-                  sections: List.generate(report.items.length, (i) {
-                    final item = report.items[i];
-                    final isTouched = i == _touchedIndex;
-                    final radius = isTouched ? 55.0 : 45.0;
-                    final color = Color(item.category.color);
-
-                    return PieChartSectionData(
-                      color: color,
-                      value: item.amount.minorUnits / 100.0,
-                      title: item.percentage >= 5.0 ? '${item.percentage.toStringAsFixed(0)}%' : '',
-                      radius: radius,
-                      titleStyle: const TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white,
-                      ),
-                    );
-                  }),
+        AppCard(
+          padding: const EdgeInsets.all(AppSpacing.lg),
+          child: SizedBox(
+            height: 220,
+            child: PieChart(
+              PieChartData(
+                pieTouchData: PieTouchData(
+                  touchCallback: (FlTouchEvent event, pieTouchResponse) {
+                    setState(() {
+                      if (!event.isInterestedForInteractions ||
+                          pieTouchResponse == null ||
+                          pieTouchResponse.touchedSection == null) {
+                        _touchedIndex = -1;
+                        return;
+                      }
+                      _touchedIndex = pieTouchResponse.touchedSection!.touchedSectionIndex;
+                    });
+                  },
                 ),
+                borderData: FlBorderData(show: false),
+                sectionsSpace: 2,
+                centerSpaceRadius: 45,
+                sections: List.generate(report.items.length, (i) {
+                  final item = report.items[i];
+                  final isTouched = i == _touchedIndex;
+                  final radius = isTouched ? 55.0 : 45.0;
+                  final color = Color(item.category.color);
+
+                  return PieChartSectionData(
+                    color: color,
+                    value: item.amount.minorUnits / 100.0,
+                    title: item.percentage >= 5.0 ? '${item.percentage.toStringAsFixed(0)}%' : '',
+                    radius: radius,
+                    titleStyle: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
+                  );
+                }),
               ),
             ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: AppSpacing.lg),
 
         // Ranked Category List
         Text(
@@ -191,38 +132,35 @@ class _CategoryBreakdownViewState extends State<CategoryBreakdownView> {
             fontWeight: FontWeight.bold,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: AppSpacing.md),
 
         ...report.items.map((item) {
           final cat = item.category;
           final color = Color(cat.color);
 
-          return Card(
-            elevation: 0,
-            margin: const EdgeInsets.only(bottom: 8),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(90)),
-            ),
-            child: Padding(
-              padding: const EdgeInsets.all(12),
+          return Padding(
+            padding: const EdgeInsets.only(bottom: AppSpacing.sm),
+            child: AppCard(
+              padding: const EdgeInsets.all(AppSpacing.md),
               child: Column(
                 children: [
                   Row(
                     children: [
-                      CircleAvatar(
-                        radius: 18,
-                        backgroundColor: color.withAlpha(35),
-                        child: Icon(_getCategoryIcon(cat.icon), color: color, size: 18),
+                      CategoryIconBadge(
+                        iconName: cat.icon,
+                        color: color,
+                        size: CategoryBadgeSize.medium,
                       ),
-                      const SizedBox(width: 12),
+                      const SizedBox(width: AppSpacing.md),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(
                               cat.name,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
+                              style: theme.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
                             ),
                             const SizedBox(height: 2),
                             Text(
@@ -234,15 +172,15 @@ class _CategoryBreakdownViewState extends State<CategoryBreakdownView> {
                           ],
                         ),
                       ),
-                      Text(
-                        item.amount.format(),
+                      MoneyText(
+                        amount: item.amount,
                         style: theme.textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ],
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: AppSpacing.sm),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(2),
                     child: LinearProgressIndicator(

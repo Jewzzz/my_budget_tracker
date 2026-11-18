@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/presentation/components/app_bottom_sheet.dart';
+import '../../../../core/presentation/components/money_text.dart';
+import '../../../../core/theme/app_spacing.dart';
 import '../../domain/entities/account.dart';
 import '../cubit/accounts_cubit.dart';
 
@@ -94,29 +97,12 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
 
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 20,
-        right: 20,
-        top: 24,
-        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
-      ),
-      child: SingleChildScrollView(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+    return AppBottomSheet(
+      title: 'Account Details',
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text('Account Details', style: theme.textTheme.titleLarge),
-              IconButton(
-                icon: const Icon(Icons.close),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
           TextField(
             controller: _nameController,
             decoration: const InputDecoration(
@@ -124,20 +110,38 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
               border: OutlineInputBorder(),
             ),
           ),
-          const SizedBox(height: 16),
-          ListTile(
-            contentPadding: EdgeInsets.zero,
-            title: const Text('Current Balance'),
-            subtitle: Text(
-              widget.account.currentBalance.format(),
-              style: theme.textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-              ),
+          const SizedBox(height: AppSpacing.lg),
+
+          // Current Balance
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: theme.colorScheme.surfaceContainerHighest.withAlpha(100),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Current Balance',
+                  style: theme.textTheme.bodyMedium?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                MoneyText(
+                  amount: widget.account.currentBalance,
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ],
             ),
           ),
+          const SizedBox(height: AppSpacing.md),
+
           SwitchListTile(
             contentPadding: EdgeInsets.zero,
-            title: const Text('Archive Account'),
+            title: const Text('Archive Account', style: TextStyle(fontWeight: FontWeight.w600)),
             subtitle: const Text('Hide this account from daily lists while keeping transactions intact'),
             value: _isArchived,
             onChanged: (val) {
@@ -146,9 +150,10 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
               });
             },
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Text('Icon', style: theme.textTheme.labelLarge),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: _iconOptions.map((opt) {
@@ -161,7 +166,7 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
                   });
                 },
                 child: Container(
-                  padding: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isSelected
@@ -178,9 +183,10 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: AppSpacing.lg),
+
           Text('Color', style: theme.textTheme.labelLarge),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
             children: _colorOptions.map((colorVal) {
@@ -206,15 +212,22 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
               );
             }).toList(),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: AppSpacing.xl),
+
           FilledButton(
             onPressed: _saveChanges,
-            child: const Text('Save Changes'),
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 14),
+            ),
+            child: const Text('Save Changes', style: TextStyle(fontSize: 16)),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: AppSpacing.sm),
+
           OutlinedButton.icon(
             style: OutlinedButton.styleFrom(
               foregroundColor: theme.colorScheme.error,
+              side: BorderSide(color: theme.colorScheme.error),
+              padding: const EdgeInsets.symmetric(vertical: 12),
             ),
             icon: const Icon(Icons.delete_outline),
             label: const Text('Delete Account'),
@@ -222,7 +235,6 @@ class _AccountDetailsSheetState extends State<AccountDetailsSheet> {
           ),
         ],
       ),
-    ),
-  );
+    );
   }
 }

@@ -11,9 +11,11 @@ abstract class AppRadius {
   static const Radius mdRadius = Radius.circular(md);
   static const Radius cardRadius = Radius.circular(card);
   static const Radius sheetRadius = Radius.circular(sheet);
+  static const Radius pillRadius = Radius.circular(pill);
 
   static const BorderRadius smBorder = BorderRadius.all(smRadius);
   static const BorderRadius mdBorder = BorderRadius.all(mdRadius);
   static const BorderRadius cardBorder = BorderRadius.all(cardRadius);
   static const BorderRadius sheetBorder = BorderRadius.vertical(top: sheetRadius);
+  static const BorderRadius pillBorder = BorderRadius.all(pillRadius);
 }
