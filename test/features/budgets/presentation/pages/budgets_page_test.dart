@@ -160,7 +160,7 @@ void main() {
       expect(find.text('Delete'), findsOneWidget);
     });
 
-    testWidgets('tapping FAB opens set budget sheet', (tester) async {
+    testWidgets('tapping header action button opens set budget sheet', (tester) async {
       when(() => budgetsCubit.state).thenReturn(
         const BudgetsLoaded(
           year: 2026,
@@ -171,11 +171,51 @@ void main() {
 
       await tester.pumpWidget(buildTestWidget());
 
-      await tester.tap(find.byType(FloatingActionButton));
+      await tester.tap(find.byTooltip('Set Category Budget'));
       await tester.pumpAndSettle();
 
       expect(find.text('Set Category Budget'), findsOneWidget);
       expect(find.text('Set Budget'), findsOneWidget);
+    });
+
+    testWidgets('when budgets exist, section header Add Budget button is visible and opens set budget sheet', (tester) async {
+      when(() => budgetsCubit.state).thenReturn(
+        BudgetsLoaded(
+          year: 2026,
+          month: 5,
+          budgets: [normalOverview],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Category Budgets'), findsOneWidget);
+      expect(find.text('Add Budget'), findsOneWidget);
+
+      await tester.tap(find.text('Add Budget'));
+      await tester.pumpAndSettle();
+
+      expect(find.text('Set Category Budget'), findsOneWidget);
+      expect(find.text('Set Budget'), findsOneWidget);
+    });
+
+    testWidgets('when all categories are already budgeted, SetBudgetSheet shows informative depletion message', (tester) async {
+      when(() => budgetsCubit.state).thenReturn(
+        BudgetsLoaded(
+          year: 2026,
+          month: 5,
+          budgets: [normalOverview],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('Add Budget'));
+      await tester.pumpAndSettle();
+
+      // In this test setup, testCategory ('cat-groceries') is the only category in categoriesCubit.
+      // Since normalOverview already budgets 'cat-groceries', all categories are budgeted.
+      expect(find.text('All expense categories currently have an active budget for this month.'), findsOneWidget);
     });
   });
 }

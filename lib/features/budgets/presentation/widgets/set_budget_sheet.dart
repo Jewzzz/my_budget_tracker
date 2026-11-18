@@ -131,6 +131,30 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
                   return !widget.existingBudgetCategoryIds.contains(c.id);
                 }).toList();
 
+                if (available.isEmpty && !isEditing) {
+                  return Container(
+                    padding: const EdgeInsets.all(AppSpacing.md),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
+                        const SizedBox(width: AppSpacing.sm),
+                        Expanded(
+                          child: Text(
+                            'All expense categories currently have an active budget for this month.',
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
                 return DropdownButtonFormField<String>(
                   value: _selectedCategoryId,
                   decoration: const InputDecoration(
