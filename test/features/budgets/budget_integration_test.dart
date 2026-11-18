@@ -122,5 +122,94 @@ void main() {
       expect(juneOverviews.first.remainingAmount, const Money(20000));
       expect(juneOverviews.first.isOverBudget, isFalse);
     });
+
+    test('supports multiple category budgets concurrently with independent calculations and alerts', () async {
+      final categories = await categoryRepository.getCategories(type: CategoryType.expense);
+      final groceriesCat = categories.firstWhere((c) => c.name == 'Groceries');
+      final transportCat = categories.firstWhere((c) => c.name == 'Transport');
+
+      // 1. Create budgets for Groceries ($300) and Transport ($100) in July 2026
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-july-groc',
+          categoryId: groceriesCat.id,
+          year: 2026,
+          month: 7,
+          limitAmount: const Money(30000),
+        ),
+      );
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-july-trans',
+          categoryId: transportCat.id,
+          year: 2026,
+          month: 7,
+          limitAmount: const Money(10000),
+        ),
+      );
+
+      // Verify both present and 0% spent
+      var overviews = await budgetRepository.getBudgetOverviews(2026, 7);
+      expect(overviews.length, 2);
+      expect(overviews.map((o) => o.category.id), containsAll([groceriesCat.id, transportCat.id]));
+
+      // 2. Spend $250 on Groceries (normal, 83%), and $120 on Transport (over budget, 120%)
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-july-groc',
+          accountId: checkingAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(25000),
+          categoryId: groceriesCat.id,
+          date: DateTime.utc(2026, 7, 10),
+          createdAt: DateTime.utc(2026, 7, 10),
+        ),
+      );
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-july-trans',
+          accountId: checkingAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(12000),
+          categoryId: transportCat.id,
+          date: DateTime.utc(2026, 7, 12),
+          createdAt: DateTime.utc(2026, 7, 12),
+        ),
+      );
+
+      overviews = await budgetRepository.getBudgetOverviews(2026, 7);
+      final groc = overviews.firstWhere((o) => o.category.id == groceriesCat.id);
+      final trans = overviews.firstWhere((o) => o.category.id == transportCat.id);
+
+      expect(groc.spentAmount, const Money(25000));
+      expect(groc.remainingAmount, const Money(5000));
+      expect(groc.isOverBudget, isFalse);
+
+      expect(trans.spentAmount, const Money(12000));
+      expect(trans.remainingAmount, const Money(-2000));
+      expect(trans.isOverBudget, isTrue);
+
+      // 3. Edit Groceries budget limit to $400
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-july-groc-updated',
+          categoryId: groceriesCat.id,
+          year: 2026,
+          month: 7,
+          limitAmount: const Money(40000),
+        ),
+      );
+
+      overviews = await budgetRepository.getBudgetOverviews(2026, 7);
+      final grocUpdated = overviews.firstWhere((o) => o.category.id == groceriesCat.id);
+      final transUnchanged = overviews.firstWhere((o) => o.category.id == transportCat.id);
+
+      expect(grocUpdated.budget.limitAmount, const Money(40000));
+      expect(grocUpdated.remainingAmount, const Money(15000));
+
+      expect(transUnchanged.budget.limitAmount, const Money(10000));
+      expect(transUnchanged.remainingAmount, const Money(-2000));
+      expect(transUnchanged.isOverBudget, isTrue);
+    });
   });
 }

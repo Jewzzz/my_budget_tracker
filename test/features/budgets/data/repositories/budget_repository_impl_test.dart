@@ -215,5 +215,152 @@ void main() {
       final budgets = await budgetRepository.getBudgets(2026, 5);
       expect(budgets, isEmpty);
     });
+
+    test('supports creating multiple distinct category budgets simultaneously in the same month', () async {
+      final categories = await categoryRepository.getCategories(type: CategoryType.expense);
+      final transportCategory = categories.firstWhere((c) => c.name == 'Transport');
+      final utilitiesCategory = categories.firstWhere((c) => c.name == 'Utilities');
+
+      final b1 = Budget(
+        id: 'b-groceries',
+        categoryId: groceriesCategory.id,
+        year: 2026,
+        month: 5,
+        limitAmount: const Money(50000), // $500
+      );
+      final b2 = Budget(
+        id: 'b-transport',
+        categoryId: transportCategory.id,
+        year: 2026,
+        month: 5,
+        limitAmount: const Money(20000), // $200
+      );
+      final b3 = Budget(
+        id: 'b-utilities',
+        categoryId: utilitiesCategory.id,
+        year: 2026,
+        month: 5,
+        limitAmount: const Money(15000), // $150
+      );
+
+      await budgetRepository.setBudget(b1);
+      await budgetRepository.setBudget(b2);
+      await budgetRepository.setBudget(b3);
+
+      final budgets = await budgetRepository.getBudgets(2026, 5);
+      expect(budgets.length, 3);
+
+      final overviews = await budgetRepository.getBudgetOverviews(2026, 5);
+      expect(overviews.length, 3);
+      expect(overviews.map((o) => o.category.id), containsAll([groceriesCategory.id, transportCategory.id, utilitiesCategory.id]));
+    });
+
+    test('tracks spending independently across multiple category budgets and ignores unbudgeted categories', () async {
+      final categories = await categoryRepository.getCategories(type: CategoryType.expense);
+      final transportCategory = categories.firstWhere((c) => c.name == 'Transport');
+      final healthcareCategory = categories.firstWhere((c) => c.name == 'Healthcare');
+
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-groc',
+          categoryId: groceriesCategory.id,
+          year: 2026,
+          month: 5,
+          limitAmount: const Money(50000), // $500
+        ),
+      );
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-trans',
+          categoryId: transportCategory.id,
+          year: 2026,
+          month: 5,
+          limitAmount: const Money(20000), // $200
+        ),
+      );
+
+      // Expense 1: Groceries ($120)
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-groc-1',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(12000),
+          categoryId: groceriesCategory.id,
+          date: DateTime.utc(2026, 5, 4),
+          createdAt: DateTime.utc(2026, 5, 4),
+        ),
+      );
+
+      // Expense 2: Transport ($80)
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-trans-1',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(8000),
+          categoryId: transportCategory.id,
+          date: DateTime.utc(2026, 5, 8),
+          createdAt: DateTime.utc(2026, 5, 8),
+        ),
+      );
+
+      // Expense 3: Healthcare (Unbudgeted, $99)
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-health-1',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(9900),
+          categoryId: healthcareCategory.id,
+          date: DateTime.utc(2026, 5, 15),
+          createdAt: DateTime.utc(2026, 5, 15),
+        ),
+      );
+
+      final overviews = await budgetRepository.getBudgetOverviews(2026, 5);
+      expect(overviews.length, 2);
+
+      final grocOverview = overviews.firstWhere((o) => o.category.id == groceriesCategory.id);
+      expect(grocOverview.spentAmount, const Money(12000));
+      expect(grocOverview.remainingAmount, const Money(38000));
+      expect(grocOverview.isOverBudget, isFalse);
+
+      final transOverview = overviews.firstWhere((o) => o.category.id == transportCategory.id);
+      expect(transOverview.spentAmount, const Money(8000));
+      expect(transOverview.remainingAmount, const Money(12000));
+      expect(transOverview.isOverBudget, isFalse);
+    });
+
+    test('deleting one category budget leaves other category budgets intact', () async {
+      final categories = await categoryRepository.getCategories(type: CategoryType.expense);
+      final transportCategory = categories.firstWhere((c) => c.name == 'Transport');
+
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-groc',
+          categoryId: groceriesCategory.id,
+          year: 2026,
+          month: 5,
+          limitAmount: const Money(50000),
+        ),
+      );
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-trans',
+          categoryId: transportCategory.id,
+          year: 2026,
+          month: 5,
+          limitAmount: const Money(20000),
+        ),
+      );
+
+      await budgetRepository.deleteBudget('b-trans');
+
+      final overviews = await budgetRepository.getBudgetOverviews(2026, 5);
+      expect(overviews.length, 1);
+      expect(overviews.first.category.id, groceriesCategory.id);
+      expect(overviews.first.budget.limitAmount, const Money(50000));
+    });
   });
 }
