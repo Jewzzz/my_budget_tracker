@@ -358,7 +358,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                                     CategoryIconBadge(
                                       iconName: cat.icon,
                                       color: Color(cat.color),
-                                      size: 24,
+                                      size: CategoryBadgeSize.small,
                                     ),
                                     const SizedBox(width: 10),
                                     Flexible(

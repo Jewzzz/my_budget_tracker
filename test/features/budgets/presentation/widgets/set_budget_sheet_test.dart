@@ -34,13 +34,12 @@ void main() {
     );
 
     final overview = CategoryBudgetOverview(
-      budget: Budget(
+      budget: const Budget(
         id: 'budget-1',
         categoryId: 'cat-groceries',
-        limitAmount: const Money(30000),
-        periodYear: 2026,
-        periodMonth: 5,
-        createdAt: DateTime.utc(2026, 5, 1),
+        limitAmount: Money(30000),
+        year: 2026,
+        month: 5,
       ),
       category: expenseCat,
       spentAmount: const Money(15000),

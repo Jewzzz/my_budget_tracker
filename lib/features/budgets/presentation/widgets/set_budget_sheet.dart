@@ -148,7 +148,7 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
                               CategoryIconBadge(
                                 iconName: c.icon,
                                 color: Color(c.color),
-                                size: 24,
+                                size: CategoryBadgeSize.small,
                               ),
                               const SizedBox(width: 10),
                               Flexible(

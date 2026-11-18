@@ -333,7 +333,7 @@ class _TransactionFilterSheetState extends State<TransactionFilterSheet> {
                                   CategoryIconBadge(
                                     iconName: c.icon,
                                     color: Color(c.color),
-                                    size: 20,
+                                    size: CategoryBadgeSize.small,
                                   ),
                                   const SizedBox(width: 8),
                                   Flexible(child: Text(c.name, overflow: TextOverflow.ellipsis)),

@@ -9,6 +9,12 @@ void main() {
   group('AppTheme & Tokens Tests', () {
     test('AppColors defines semantic and brand colors', () {
       expect(AppColors.primary, isNotNull);
+      expect(AppColors.brandBlue, const Color(0xFF2563EB));
+      expect(AppColors.brandPurple, const Color(0xFF7C3AED));
+      expect(AppColors.brandGradient.colors, [
+        const Color(0xFF2563EB),
+        const Color(0xFF7C3AED),
+      ]);
       expect(AppColors.income, const Color(0xFF10B981));
       expect(AppColors.expense, const Color(0xFFEF4444));
       expect(AppColors.transfer, const Color(0xFF3B82F6));
