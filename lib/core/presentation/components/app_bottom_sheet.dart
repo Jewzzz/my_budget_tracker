@@ -65,7 +65,7 @@ class AppBottomSheet extends StatelessWidget {
               Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (trailing != null) trailing!,
+                  ?trailing,
                   if (showCloseButton)
                     IconButton(
                       icon: const Icon(Icons.close),
