@@ -3,6 +3,7 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../categories/domain/entities/category.dart';
@@ -109,6 +110,15 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isEditing = widget.existingOverview != null;
+    final catState = context.watch<CategoriesCubit>().state;
+    final categories = catState is CategoriesLoaded
+        ? catState.expenseCategories
+        : <Category>[];
+    final available = categories.where((c) {
+      if (c.id == _selectedCategoryId) return true;
+      return !widget.existingBudgetCategoryIds.contains(c.id);
+    }).toList();
+    final canSubmit = isEditing || available.isNotEmpty;
 
     return AppBottomSheet(
       title: isEditing ? 'Edit Category Budget' : 'Set Category Budget',
@@ -119,77 +129,62 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             // Category Selector
-            BlocBuilder<CategoriesCubit, CategoriesState>(
-              builder: (context, catState) {
-                final categories = catState is CategoriesLoaded
-                    ? catState.expenseCategories
-                    : <Category>[];
-
-                // Available categories are unbudgeted ones, plus the currently selected one
-                final available = categories.where((c) {
-                  if (c.id == _selectedCategoryId) return true;
-                  return !widget.existingBudgetCategoryIds.contains(c.id);
-                }).toList();
-
-                if (available.isEmpty && !isEditing) {
-                  return Container(
-                    padding: const EdgeInsets.all(AppSpacing.md),
-                    decoration: BoxDecoration(
-                      color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
-                      borderRadius: BorderRadius.circular(12),
+            if (available.isEmpty && !isEditing)
+              Container(
+                padding: const EdgeInsets.all(AppSpacing.md),
+                decoration: BoxDecoration(
+                  color: theme.colorScheme.surfaceContainerHighest.withAlpha(120),
+                  borderRadius: AppRadius.mdBorder,
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
+                    const SizedBox(width: AppSpacing.sm),
+                    Expanded(
+                      child: Text(
+                        'All expense categories currently have an active budget for this month.',
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
                     ),
-                    child: Row(
-                      children: [
-                        Icon(Icons.info_outline, size: 20, color: theme.colorScheme.primary),
-                        const SizedBox(width: AppSpacing.sm),
-                        Expanded(
-                          child: Text(
-                            'All expense categories currently have an active budget for this month.',
-                            style: theme.textTheme.bodyMedium?.copyWith(
-                              color: theme.colorScheme.onSurfaceVariant,
+                  ],
+                ),
+              )
+            else
+              DropdownButtonFormField<String>(
+                value: _selectedCategoryId,
+                decoration: const InputDecoration(
+                  labelText: 'Expense Category',
+                  border: OutlineInputBorder(),
+                  contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                ),
+                items: available
+                    .map(
+                      (c) => DropdownMenuItem(
+                        value: c.id,
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CategoryIconBadge(
+                              iconName: c.icon,
+                              color: Color(c.color),
+                              size: CategoryBadgeSize.small,
                             ),
-                          ),
+                            const SizedBox(width: 10),
+                            Flexible(
+                              child: Text(c.name, overflow: TextOverflow.ellipsis),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  );
-                }
-
-                return DropdownButtonFormField<String>(
-                  value: _selectedCategoryId,
-                  decoration: const InputDecoration(
-                    labelText: 'Expense Category',
-                    border: OutlineInputBorder(),
-                    contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  ),
-                  items: available
-                      .map(
-                        (c) => DropdownMenuItem(
-                          value: c.id,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CategoryIconBadge(
-                                iconName: c.icon,
-                                color: Color(c.color),
-                                size: CategoryBadgeSize.small,
-                              ),
-                              const SizedBox(width: 10),
-                              Flexible(
-                                child: Text(c.name, overflow: TextOverflow.ellipsis),
-                              ),
-                            ],
-                          ),
-                        ),
-                      )
-                      .toList(),
-                  onChanged: isEditing
-                      ? null // Cannot change category when editing existing budget
-                      : (val) => setState(() => _selectedCategoryId = val),
-                  validator: (val) => val == null ? 'Please select a category' : null,
-                );
-              },
-            ),
+                      ),
+                    )
+                    .toList(),
+                onChanged: isEditing
+                    ? null // Cannot change category when editing existing budget
+                    : (val) => setState(() => _selectedCategoryId = val),
+                validator: (val) => val == null ? 'Please select a category' : null,
+              ),
             const SizedBox(height: AppSpacing.lg),
 
             // Limit Amount Field
@@ -222,7 +217,7 @@ class _SetBudgetSheetState extends State<SetBudgetSheet> {
                 ],
                 Expanded(
                   child: FilledButton(
-                    onPressed: _submit,
+                    onPressed: canSubmit ? _submit : null,
                     style: FilledButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),

@@ -15,6 +15,7 @@ import '../../security/presentation/pages/security_settings_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../../transactions/presentation/pages/transactions_page.dart';
 import '../../transactions/presentation/widgets/quick_add_transaction_sheet.dart';
+import '../../../core/theme/app_radius.dart';
 
 class _AppTabItem {
   final String title;
@@ -129,7 +130,7 @@ class _AppShellState extends State<AppShell> {
           heroTag: 'quick_add_txn_fab',
           tooltip: 'Quick Add Transaction',
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
           onPressed: () => _openQuickAddSheet(context),
           child: const Icon(Icons.add),
         );
@@ -139,7 +140,7 @@ class _AppShellState extends State<AppShell> {
           heroTag: 'add_budget_fab',
           tooltip: 'Set Category Budget',
           elevation: 4,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          shape: const RoundedRectangleBorder(borderRadius: AppRadius.cardBorder),
           onPressed: () => _openSetBudgetSheet(context),
           child: const Icon(Icons.add),
         );

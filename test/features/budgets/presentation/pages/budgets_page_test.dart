@@ -30,6 +30,22 @@ void main() {
       color: 0xFF10B981,
     );
 
+    final transportCategory = Category(
+      id: 'cat-transport',
+      name: 'Transport',
+      type: CategoryType.expense,
+      icon: 'directions_car',
+      color: 0xFF3B82F6,
+    );
+
+    final billsCategory = Category(
+      id: 'cat-bills',
+      name: 'Bills',
+      type: CategoryType.expense,
+      icon: 'receipt',
+      color: 0xFFF59E0B,
+    );
+
     final normalBudget = Budget(
       id: 'b-1',
       categoryId: testCategory.id,
@@ -42,6 +58,34 @@ void main() {
       budget: normalBudget,
       category: testCategory,
       spentAmount: const Money(20000), // $200 (40%)
+    );
+
+    final transportBudget = Budget(
+      id: 'b-3',
+      categoryId: transportCategory.id,
+      year: 2026,
+      month: 5,
+      limitAmount: const Money(20000), // $200
+    );
+
+    final transportOverview = CategoryBudgetOverview(
+      budget: transportBudget,
+      category: transportCategory,
+      spentAmount: const Money(8000), // $80 (40%)
+    );
+
+    final billsBudget = Budget(
+      id: 'b-4',
+      categoryId: billsCategory.id,
+      year: 2026,
+      month: 5,
+      limitAmount: const Money(30000), // $300
+    );
+
+    final billsOverview = CategoryBudgetOverview(
+      budget: billsBudget,
+      category: billsCategory,
+      spentAmount: const Money(15000), // $150 (50%)
     );
 
     final overBudget = Budget(
@@ -199,7 +243,7 @@ void main() {
       expect(find.text('Set Budget'), findsOneWidget);
     });
 
-    testWidgets('when all categories are already budgeted, SetBudgetSheet shows informative depletion message', (tester) async {
+    testWidgets('when all categories are already budgeted, SetBudgetSheet shows informative depletion message and disables submit button', (tester) async {
       when(() => budgetsCubit.state).thenReturn(
         BudgetsLoaded(
           year: 2026,
@@ -216,6 +260,52 @@ void main() {
       // In this test setup, testCategory ('cat-groceries') is the only category in categoriesCubit.
       // Since normalOverview already budgets 'cat-groceries', all categories are budgeted.
       expect(find.text('All expense categories currently have an active budget for this month.'), findsOneWidget);
+      final submitButton = tester.widget<FilledButton>(find.widgetWithText(FilledButton, 'Set Budget'));
+      expect(submitButton.onPressed, isNull);
+    });
+
+    testWidgets('multiple budget card rendering: renders all category budget cards in list', (tester) async {
+      when(() => budgetsCubit.state).thenReturn(
+        BudgetsLoaded(
+          year: 2026,
+          month: 5,
+          budgets: [normalOverview, transportOverview, billsOverview],
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      expect(find.text('Category Budgets'), findsOneWidget);
+      expect(find.text('Groceries'), findsOneWidget);
+      expect(find.text('Transport'), findsOneWidget);
+      expect(find.text('Bills'), findsOneWidget);
+    });
+
+    testWidgets('category dropdown excludes categories that already have active budgets', (tester) async {
+      when(() => categoriesCubit.state).thenReturn(
+        CategoriesLoaded(categories: [testCategory, transportCategory]),
+      );
+      when(() => budgetsCubit.state).thenReturn(
+        BudgetsLoaded(
+          year: 2026,
+          month: 5,
+          budgets: [normalOverview], // Groceries is already budgeted
+        ),
+      );
+
+      await tester.pumpWidget(buildTestWidget());
+
+      await tester.tap(find.text('Add Budget'));
+      await tester.pumpAndSettle();
+
+      // Tap the dropdown to open its items
+      await tester.tap(find.byType(DropdownButtonFormField<String>));
+      await tester.pumpAndSettle();
+
+      // Groceries should not be available as a selectable item in the menu
+      // Transport should be available
+      expect(find.widgetWithText(DropdownMenuItem<String>, 'Transport'), findsOneWidget);
+      expect(find.widgetWithText(DropdownMenuItem<String>, 'Groceries'), findsNothing);
     });
   });
 }
