@@ -153,7 +153,7 @@ void main() {
 
       // Verify Snapshot Schema and Checksum
       final map = jsonDecode(snapshotJson) as Map<String, dynamic>;
-      expect(map['schemaVersion'], 1);
+      expect(map['schemaVersion'], 2);
       final data = map['data'] as Map<String, dynamic>;
       final expectedChecksum = sha256.convert(utf8.encode(jsonEncode(data))).toString();
       expect(map['checksum'], expectedChecksum);

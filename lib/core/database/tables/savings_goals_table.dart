@@ -4,6 +4,7 @@ import 'package:drift/drift.dart';
 class SavingsGoals extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
   IntColumn get targetAmountMinorUnits => integer()();
   IntColumn get savedAmountMinorUnits => integer().withDefault(const Constant(0))();
   IntColumn get targetDate => integer().nullable()();

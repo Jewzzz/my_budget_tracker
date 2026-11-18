@@ -59,7 +59,7 @@ void main() {
       final jsonString = await repository.exportBackupJson();
       final map = jsonDecode(jsonString) as Map<String, dynamic>;
 
-      expect(map['schemaVersion'], 1);
+      expect(map['schemaVersion'], 2);
       expect(map['exportedAt'], isNotNull);
       expect(map['checksum'], isA<String>());
       expect(map['data'], isA<Map<String, dynamic>>());
@@ -134,6 +134,70 @@ void main() {
       expect(transactions.length, 1);
       expect(transactions.first.id, 'tx-1');
       expect(transactions.first.amountMinorUnits, 100000);
+    });
+
+    test('restores legacy schemaVersion: 1 backup snapshot and backfills default USD currency', () async {
+      final v1Data = {
+        'accounts': [
+          {
+            'id': 'acc-v1',
+            'name': 'Legacy Account',
+            'accountType': 'checking',
+            'initialBalanceMinorUnits': 50000,
+            'currentBalanceMinorUnits': 50000,
+            'isArchived': false,
+            'icon': 'account_balance',
+            'color': 0xFF2196F3,
+            'createdAt': 1700000000,
+          }
+        ],
+        'categories': [
+          {
+            'id': 'cat-groceries',
+            'name': 'Groceries',
+            'categoryType': 'expense',
+            'icon': 'shopping_cart',
+            'color': 0xFF10B981,
+            'isDefault': true,
+          }
+        ],
+        'budgets': [],
+        'savingsGoals': [],
+        'transactions': [
+          {
+            'id': 'tx-v1',
+            'accountId': 'acc-v1',
+            'transactionType': 'expense',
+            'amountMinorUnits': 2500,
+            'categoryId': 'cat-groceries',
+            'destinationAccountId': null,
+            'transactionDate': 1700000000,
+            'note': 'Legacy coffee',
+            'createdAt': 1700000000,
+          }
+        ],
+        'goalContributions': [],
+      };
+
+      final checksum = sha256.convert(utf8.encode(jsonEncode(v1Data))).toString();
+      final v1Snapshot = jsonEncode({
+        'schemaVersion': 1,
+        'exportedAt': DateTime.now().toUtc().toIso8601String(),
+        'checksum': checksum,
+        'data': v1Data,
+      });
+
+      await repository.restoreFromJson(v1Snapshot);
+
+      final accounts = await database.select(database.accounts).get();
+      expect(accounts.length, 1);
+      expect(accounts.first.id, 'acc-v1');
+      expect(accounts.first.currencyCode, 'USD');
+
+      final txs = await database.select(database.transactions).get();
+      expect(txs.length, 1);
+      expect(txs.first.id, 'tx-v1');
+      expect(txs.first.currencyCode, 'USD');
     });
 
     test('throws CorruptBackupFailure if JSON is malformed or missing metadata', () async {

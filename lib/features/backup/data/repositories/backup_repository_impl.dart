@@ -36,6 +36,7 @@ class BackupRepositoryImpl implements BackupRepository {
     final transactions = (await database.select(database.transactions).get()).map((r) => r.toJson()).toList();
     final goalContributions =
         (await database.select(database.goalContributions).get()).map((r) => r.toJson()).toList();
+    final exchangeRates = (await database.select(database.exchangeRates).get()).map((r) => r.toJson()).toList();
 
     final data = {
       'accounts': accounts,
@@ -44,12 +45,13 @@ class BackupRepositoryImpl implements BackupRepository {
       'savingsGoals': savingsGoals,
       'transactions': transactions,
       'goalContributions': goalContributions,
+      'exchangeRates': exchangeRates,
     };
 
     final checksum = sha256.convert(utf8.encode(jsonEncode(data))).toString();
 
     final snapshot = {
-      'schemaVersion': 1,
+      'schemaVersion': 2,
       'exportedAt': DateTime.now().toUtc().toIso8601String(),
       'checksum': checksum,
       'data': data,
@@ -75,7 +77,7 @@ class BackupRepositoryImpl implements BackupRepository {
     }
 
     final schemaVersion = map['schemaVersion'];
-    if (schemaVersion is! int || schemaVersion != 1) {
+    if (schemaVersion is! int || (schemaVersion != 1 && schemaVersion != 2)) {
       throw IncompatibleSchemaFailure('Unsupported schema version: $schemaVersion');
     }
 
@@ -97,22 +99,49 @@ class BackupRepositoryImpl implements BackupRepository {
         await database.delete(database.categories).go();
         await database.delete(database.accounts).go();
 
-        // Deserialize and insert in dependency order
+        // Deserialize and insert in dependency order, adapting v1 schema if needed
         final categoriesList = (data['categories'] as List? ?? [])
             .map((e) => CategoryRow.fromJson(e as Map<String, dynamic>))
             .toList();
-        final accountsList =
-            (data['accounts'] as List? ?? []).map((e) => AccountRow.fromJson(e as Map<String, dynamic>)).toList();
-        final budgetsList =
-            (data['budgets'] as List? ?? []).map((e) => BudgetRow.fromJson(e as Map<String, dynamic>)).toList();
-        final savingsGoalsList = (data['savingsGoals'] as List? ?? [])
-            .map((e) => SavingsGoalRow.fromJson(e as Map<String, dynamic>))
-            .toList();
-        final transactionsList = (data['transactions'] as List? ?? [])
-            .map((e) => TransactionRow.fromJson(e as Map<String, dynamic>))
-            .toList();
-        final goalContributionsList = (data['goalContributions'] as List? ?? [])
-            .map((e) => GoalContributionRow.fromJson(e as Map<String, dynamic>))
+
+        final rawAccounts = (data['accounts'] as List? ?? []);
+        final accountsList = rawAccounts.map((e) {
+          final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
+          m.putIfAbsent('currencyCode', () => 'USD');
+          return AccountRow.fromJson(m);
+        }).toList();
+
+        final rawBudgets = (data['budgets'] as List? ?? []);
+        final budgetsList = rawBudgets.map((e) {
+          final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
+          m.putIfAbsent('currencyCode', () => 'USD');
+          return BudgetRow.fromJson(m);
+        }).toList();
+
+        final rawGoals = (data['savingsGoals'] as List? ?? []);
+        final savingsGoalsList = rawGoals.map((e) {
+          final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
+          m.putIfAbsent('currencyCode', () => 'USD');
+          return SavingsGoalRow.fromJson(m);
+        }).toList();
+
+        final rawTransactions = (data['transactions'] as List? ?? []);
+        final transactionsList = rawTransactions.map((e) {
+          final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
+          m.putIfAbsent('currencyCode', () => 'USD');
+          return TransactionRow.fromJson(m);
+        }).toList();
+
+        final rawContributions = (data['goalContributions'] as List? ?? []);
+        final goalContributionsList = rawContributions.map((e) {
+          final m = Map<String, dynamic>.from(e as Map<String, dynamic>);
+          m.putIfAbsent('currencyCode', () => 'USD');
+          return GoalContributionRow.fromJson(m);
+        }).toList();
+
+        final rawRates = (data['exchangeRates'] as List? ?? []);
+        final exchangeRatesList = rawRates
+            .map((e) => ExchangeRateRow.fromJson(e as Map<String, dynamic>))
             .toList();
 
         await database.batch((b) {
@@ -122,7 +151,14 @@ class BackupRepositoryImpl implements BackupRepository {
           b.insertAll(database.savingsGoals, savingsGoalsList);
           b.insertAll(database.transactions, transactionsList);
           b.insertAll(database.goalContributions, goalContributionsList);
+          if (exchangeRatesList.isNotEmpty) {
+            b.insertAll(database.exchangeRates, exchangeRatesList, mode: InsertMode.insertOrReplace);
+          }
         });
+
+        if (exchangeRatesList.isEmpty) {
+          await database.seedDefaultExchangeRatesIfEmpty();
+        }
       });
     } catch (e) {
       if (e is DomainFailure) rethrow;

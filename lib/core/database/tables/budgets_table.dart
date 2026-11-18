@@ -9,6 +9,7 @@ class Budgets extends Table {
   IntColumn get year => integer()();
   IntColumn get month => integer()();
   IntColumn get limitMinorUnits => integer()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
 
   @override
   Set<Column> get primaryKey => {id};

@@ -5,6 +5,7 @@ class Accounts extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get accountType => text()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
   IntColumn get initialBalanceMinorUnits => integer().withDefault(const Constant(0))();
   IntColumn get currentBalanceMinorUnits => integer().withDefault(const Constant(0))();
   BoolColumn get isArchived => boolean().withDefault(const Constant(false))();

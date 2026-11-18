@@ -38,6 +38,18 @@ class $AccountsTable extends Accounts
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
   static const VerificationMeta _initialBalanceMinorUnitsMeta =
       const VerificationMeta('initialBalanceMinorUnits');
   @override
@@ -111,6 +123,7 @@ class $AccountsTable extends Accounts
     id,
     name,
     accountType,
+    currencyCode,
     initialBalanceMinorUnits,
     currentBalanceMinorUnits,
     isArchived,
@@ -153,6 +166,15 @@ class $AccountsTable extends Accounts
       );
     } else if (isInserting) {
       context.missing(_accountTypeMeta);
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
     }
     if (data.containsKey('initial_balance_minor_units')) {
       context.handle(
@@ -223,6 +245,10 @@ class $AccountsTable extends Accounts
         DriftSqlType.string,
         data['${effectivePrefix}account_type'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
       initialBalanceMinorUnits: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}initial_balance_minor_units'],
@@ -260,6 +286,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
   final String id;
   final String name;
   final String accountType;
+  final String currencyCode;
   final int initialBalanceMinorUnits;
   final int currentBalanceMinorUnits;
   final bool isArchived;
@@ -270,6 +297,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     required this.id,
     required this.name,
     required this.accountType,
+    required this.currencyCode,
     required this.initialBalanceMinorUnits,
     required this.currentBalanceMinorUnits,
     required this.isArchived,
@@ -283,6 +311,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
     map['account_type'] = Variable<String>(accountType);
+    map['currency_code'] = Variable<String>(currencyCode);
     map['initial_balance_minor_units'] = Variable<int>(
       initialBalanceMinorUnits,
     );
@@ -301,6 +330,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       id: Value(id),
       name: Value(name),
       accountType: Value(accountType),
+      currencyCode: Value(currencyCode),
       initialBalanceMinorUnits: Value(initialBalanceMinorUnits),
       currentBalanceMinorUnits: Value(currentBalanceMinorUnits),
       isArchived: Value(isArchived),
@@ -319,6 +349,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
       accountType: serializer.fromJson<String>(json['accountType']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       initialBalanceMinorUnits: serializer.fromJson<int>(
         json['initialBalanceMinorUnits'],
       ),
@@ -338,6 +369,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
       'accountType': serializer.toJson<String>(accountType),
+      'currencyCode': serializer.toJson<String>(currencyCode),
       'initialBalanceMinorUnits': serializer.toJson<int>(
         initialBalanceMinorUnits,
       ),
@@ -355,6 +387,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     String? id,
     String? name,
     String? accountType,
+    String? currencyCode,
     int? initialBalanceMinorUnits,
     int? currentBalanceMinorUnits,
     bool? isArchived,
@@ -365,6 +398,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     id: id ?? this.id,
     name: name ?? this.name,
     accountType: accountType ?? this.accountType,
+    currencyCode: currencyCode ?? this.currencyCode,
     initialBalanceMinorUnits:
         initialBalanceMinorUnits ?? this.initialBalanceMinorUnits,
     currentBalanceMinorUnits:
@@ -381,6 +415,9 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
       accountType: data.accountType.present
           ? data.accountType.value
           : this.accountType,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
       initialBalanceMinorUnits: data.initialBalanceMinorUnits.present
           ? data.initialBalanceMinorUnits.value
           : this.initialBalanceMinorUnits,
@@ -402,6 +439,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('accountType: $accountType, ')
+          ..write('currencyCode: $currencyCode, ')
           ..write('initialBalanceMinorUnits: $initialBalanceMinorUnits, ')
           ..write('currentBalanceMinorUnits: $currentBalanceMinorUnits, ')
           ..write('isArchived: $isArchived, ')
@@ -417,6 +455,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
     id,
     name,
     accountType,
+    currencyCode,
     initialBalanceMinorUnits,
     currentBalanceMinorUnits,
     isArchived,
@@ -431,6 +470,7 @@ class AccountRow extends DataClass implements Insertable<AccountRow> {
           other.id == this.id &&
           other.name == this.name &&
           other.accountType == this.accountType &&
+          other.currencyCode == this.currencyCode &&
           other.initialBalanceMinorUnits == this.initialBalanceMinorUnits &&
           other.currentBalanceMinorUnits == this.currentBalanceMinorUnits &&
           other.isArchived == this.isArchived &&
@@ -443,6 +483,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
   final Value<String> id;
   final Value<String> name;
   final Value<String> accountType;
+  final Value<String> currencyCode;
   final Value<int> initialBalanceMinorUnits;
   final Value<int> currentBalanceMinorUnits;
   final Value<bool> isArchived;
@@ -454,6 +495,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.accountType = const Value.absent(),
+    this.currencyCode = const Value.absent(),
     this.initialBalanceMinorUnits = const Value.absent(),
     this.currentBalanceMinorUnits = const Value.absent(),
     this.isArchived = const Value.absent(),
@@ -466,6 +508,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     required String id,
     required String name,
     required String accountType,
+    this.currencyCode = const Value.absent(),
     this.initialBalanceMinorUnits = const Value.absent(),
     this.currentBalanceMinorUnits = const Value.absent(),
     this.isArchived = const Value.absent(),
@@ -483,6 +526,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? accountType,
+    Expression<String>? currencyCode,
     Expression<int>? initialBalanceMinorUnits,
     Expression<int>? currentBalanceMinorUnits,
     Expression<bool>? isArchived,
@@ -495,6 +539,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (accountType != null) 'account_type': accountType,
+      if (currencyCode != null) 'currency_code': currencyCode,
       if (initialBalanceMinorUnits != null)
         'initial_balance_minor_units': initialBalanceMinorUnits,
       if (currentBalanceMinorUnits != null)
@@ -511,6 +556,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     Value<String>? id,
     Value<String>? name,
     Value<String>? accountType,
+    Value<String>? currencyCode,
     Value<int>? initialBalanceMinorUnits,
     Value<int>? currentBalanceMinorUnits,
     Value<bool>? isArchived,
@@ -523,6 +569,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
       id: id ?? this.id,
       name: name ?? this.name,
       accountType: accountType ?? this.accountType,
+      currencyCode: currencyCode ?? this.currencyCode,
       initialBalanceMinorUnits:
           initialBalanceMinorUnits ?? this.initialBalanceMinorUnits,
       currentBalanceMinorUnits:
@@ -546,6 +593,9 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
     }
     if (accountType.present) {
       map['account_type'] = Variable<String>(accountType.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
     }
     if (initialBalanceMinorUnits.present) {
       map['initial_balance_minor_units'] = Variable<int>(
@@ -581,6 +631,7 @@ class AccountsCompanion extends UpdateCompanion<AccountRow> {
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('accountType: $accountType, ')
+          ..write('currencyCode: $currencyCode, ')
           ..write('initialBalanceMinorUnits: $initialBalanceMinorUnits, ')
           ..write('currentBalanceMinorUnits: $currentBalanceMinorUnits, ')
           ..write('isArchived: $isArchived, ')
@@ -1054,6 +1105,50 @@ class $TransactionsTable extends Transactions
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
+  static const VerificationMeta _originalAmountMinorUnitsMeta =
+      const VerificationMeta('originalAmountMinorUnits');
+  @override
+  late final GeneratedColumn<int> originalAmountMinorUnits =
+      GeneratedColumn<int>(
+        'original_amount_minor_units',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _originalCurrencyCodeMeta =
+      const VerificationMeta('originalCurrencyCode');
+  @override
+  late final GeneratedColumn<String> originalCurrencyCode =
+      GeneratedColumn<String>(
+        'original_currency_code',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _exchangeRateScaledMeta =
+      const VerificationMeta('exchangeRateScaled');
+  @override
+  late final GeneratedColumn<int> exchangeRateScaled = GeneratedColumn<int>(
+    'exchange_rate_scaled',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _categoryIdMeta = const VerificationMeta(
     'categoryId',
   );
@@ -1119,6 +1214,10 @@ class $TransactionsTable extends Transactions
     accountId,
     transactionType,
     amountMinorUnits,
+    currencyCode,
+    originalAmountMinorUnits,
+    originalCurrencyCode,
+    exchangeRateScaled,
     categoryId,
     destinationAccountId,
     transactionDate,
@@ -1171,6 +1270,42 @@ class $TransactionsTable extends Transactions
       );
     } else if (isInserting) {
       context.missing(_amountMinorUnitsMeta);
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_amount_minor_units')) {
+      context.handle(
+        _originalAmountMinorUnitsMeta,
+        originalAmountMinorUnits.isAcceptableOrUnknown(
+          data['original_amount_minor_units']!,
+          _originalAmountMinorUnitsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_currency_code')) {
+      context.handle(
+        _originalCurrencyCodeMeta,
+        originalCurrencyCode.isAcceptableOrUnknown(
+          data['original_currency_code']!,
+          _originalCurrencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exchange_rate_scaled')) {
+      context.handle(
+        _exchangeRateScaledMeta,
+        exchangeRateScaled.isAcceptableOrUnknown(
+          data['exchange_rate_scaled']!,
+          _exchangeRateScaledMeta,
+        ),
+      );
     }
     if (data.containsKey('category_id')) {
       context.handle(
@@ -1237,6 +1372,22 @@ class $TransactionsTable extends Transactions
         DriftSqlType.int,
         data['${effectivePrefix}amount_minor_units'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      originalAmountMinorUnits: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}original_amount_minor_units'],
+      ),
+      originalCurrencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}original_currency_code'],
+      ),
+      exchangeRateScaled: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}exchange_rate_scaled'],
+      ),
       categoryId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}category_id'],
@@ -1271,6 +1422,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
   final String accountId;
   final String transactionType;
   final int amountMinorUnits;
+  final String currencyCode;
+  final int? originalAmountMinorUnits;
+  final String? originalCurrencyCode;
+  final int? exchangeRateScaled;
   final String? categoryId;
   final String? destinationAccountId;
   final int transactionDate;
@@ -1281,6 +1436,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     required this.accountId,
     required this.transactionType,
     required this.amountMinorUnits,
+    required this.currencyCode,
+    this.originalAmountMinorUnits,
+    this.originalCurrencyCode,
+    this.exchangeRateScaled,
     this.categoryId,
     this.destinationAccountId,
     required this.transactionDate,
@@ -1294,6 +1453,18 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     map['account_id'] = Variable<String>(accountId);
     map['transaction_type'] = Variable<String>(transactionType);
     map['amount_minor_units'] = Variable<int>(amountMinorUnits);
+    map['currency_code'] = Variable<String>(currencyCode);
+    if (!nullToAbsent || originalAmountMinorUnits != null) {
+      map['original_amount_minor_units'] = Variable<int>(
+        originalAmountMinorUnits,
+      );
+    }
+    if (!nullToAbsent || originalCurrencyCode != null) {
+      map['original_currency_code'] = Variable<String>(originalCurrencyCode);
+    }
+    if (!nullToAbsent || exchangeRateScaled != null) {
+      map['exchange_rate_scaled'] = Variable<int>(exchangeRateScaled);
+    }
     if (!nullToAbsent || categoryId != null) {
       map['category_id'] = Variable<String>(categoryId);
     }
@@ -1314,6 +1485,16 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       accountId: Value(accountId),
       transactionType: Value(transactionType),
       amountMinorUnits: Value(amountMinorUnits),
+      currencyCode: Value(currencyCode),
+      originalAmountMinorUnits: originalAmountMinorUnits == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalAmountMinorUnits),
+      originalCurrencyCode: originalCurrencyCode == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalCurrencyCode),
+      exchangeRateScaled: exchangeRateScaled == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exchangeRateScaled),
       categoryId: categoryId == null && nullToAbsent
           ? const Value.absent()
           : Value(categoryId),
@@ -1336,6 +1517,14 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       accountId: serializer.fromJson<String>(json['accountId']),
       transactionType: serializer.fromJson<String>(json['transactionType']),
       amountMinorUnits: serializer.fromJson<int>(json['amountMinorUnits']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      originalAmountMinorUnits: serializer.fromJson<int?>(
+        json['originalAmountMinorUnits'],
+      ),
+      originalCurrencyCode: serializer.fromJson<String?>(
+        json['originalCurrencyCode'],
+      ),
+      exchangeRateScaled: serializer.fromJson<int?>(json['exchangeRateScaled']),
       categoryId: serializer.fromJson<String?>(json['categoryId']),
       destinationAccountId: serializer.fromJson<String?>(
         json['destinationAccountId'],
@@ -1353,6 +1542,12 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       'accountId': serializer.toJson<String>(accountId),
       'transactionType': serializer.toJson<String>(transactionType),
       'amountMinorUnits': serializer.toJson<int>(amountMinorUnits),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'originalAmountMinorUnits': serializer.toJson<int?>(
+        originalAmountMinorUnits,
+      ),
+      'originalCurrencyCode': serializer.toJson<String?>(originalCurrencyCode),
+      'exchangeRateScaled': serializer.toJson<int?>(exchangeRateScaled),
       'categoryId': serializer.toJson<String?>(categoryId),
       'destinationAccountId': serializer.toJson<String?>(destinationAccountId),
       'transactionDate': serializer.toJson<int>(transactionDate),
@@ -1366,6 +1561,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     String? accountId,
     String? transactionType,
     int? amountMinorUnits,
+    String? currencyCode,
+    Value<int?> originalAmountMinorUnits = const Value.absent(),
+    Value<String?> originalCurrencyCode = const Value.absent(),
+    Value<int?> exchangeRateScaled = const Value.absent(),
     Value<String?> categoryId = const Value.absent(),
     Value<String?> destinationAccountId = const Value.absent(),
     int? transactionDate,
@@ -1376,6 +1575,16 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     accountId: accountId ?? this.accountId,
     transactionType: transactionType ?? this.transactionType,
     amountMinorUnits: amountMinorUnits ?? this.amountMinorUnits,
+    currencyCode: currencyCode ?? this.currencyCode,
+    originalAmountMinorUnits: originalAmountMinorUnits.present
+        ? originalAmountMinorUnits.value
+        : this.originalAmountMinorUnits,
+    originalCurrencyCode: originalCurrencyCode.present
+        ? originalCurrencyCode.value
+        : this.originalCurrencyCode,
+    exchangeRateScaled: exchangeRateScaled.present
+        ? exchangeRateScaled.value
+        : this.exchangeRateScaled,
     categoryId: categoryId.present ? categoryId.value : this.categoryId,
     destinationAccountId: destinationAccountId.present
         ? destinationAccountId.value
@@ -1394,6 +1603,18 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
       amountMinorUnits: data.amountMinorUnits.present
           ? data.amountMinorUnits.value
           : this.amountMinorUnits,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      originalAmountMinorUnits: data.originalAmountMinorUnits.present
+          ? data.originalAmountMinorUnits.value
+          : this.originalAmountMinorUnits,
+      originalCurrencyCode: data.originalCurrencyCode.present
+          ? data.originalCurrencyCode.value
+          : this.originalCurrencyCode,
+      exchangeRateScaled: data.exchangeRateScaled.present
+          ? data.exchangeRateScaled.value
+          : this.exchangeRateScaled,
       categoryId: data.categoryId.present
           ? data.categoryId.value
           : this.categoryId,
@@ -1415,6 +1636,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           ..write('accountId: $accountId, ')
           ..write('transactionType: $transactionType, ')
           ..write('amountMinorUnits: $amountMinorUnits, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('originalAmountMinorUnits: $originalAmountMinorUnits, ')
+          ..write('originalCurrencyCode: $originalCurrencyCode, ')
+          ..write('exchangeRateScaled: $exchangeRateScaled, ')
           ..write('categoryId: $categoryId, ')
           ..write('destinationAccountId: $destinationAccountId, ')
           ..write('transactionDate: $transactionDate, ')
@@ -1430,6 +1655,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
     accountId,
     transactionType,
     amountMinorUnits,
+    currencyCode,
+    originalAmountMinorUnits,
+    originalCurrencyCode,
+    exchangeRateScaled,
     categoryId,
     destinationAccountId,
     transactionDate,
@@ -1444,6 +1673,10 @@ class TransactionRow extends DataClass implements Insertable<TransactionRow> {
           other.accountId == this.accountId &&
           other.transactionType == this.transactionType &&
           other.amountMinorUnits == this.amountMinorUnits &&
+          other.currencyCode == this.currencyCode &&
+          other.originalAmountMinorUnits == this.originalAmountMinorUnits &&
+          other.originalCurrencyCode == this.originalCurrencyCode &&
+          other.exchangeRateScaled == this.exchangeRateScaled &&
           other.categoryId == this.categoryId &&
           other.destinationAccountId == this.destinationAccountId &&
           other.transactionDate == this.transactionDate &&
@@ -1456,6 +1689,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
   final Value<String> accountId;
   final Value<String> transactionType;
   final Value<int> amountMinorUnits;
+  final Value<String> currencyCode;
+  final Value<int?> originalAmountMinorUnits;
+  final Value<String?> originalCurrencyCode;
+  final Value<int?> exchangeRateScaled;
   final Value<String?> categoryId;
   final Value<String?> destinationAccountId;
   final Value<int> transactionDate;
@@ -1467,6 +1704,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     this.accountId = const Value.absent(),
     this.transactionType = const Value.absent(),
     this.amountMinorUnits = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.originalAmountMinorUnits = const Value.absent(),
+    this.originalCurrencyCode = const Value.absent(),
+    this.exchangeRateScaled = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.destinationAccountId = const Value.absent(),
     this.transactionDate = const Value.absent(),
@@ -1479,6 +1720,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     required String accountId,
     required String transactionType,
     required int amountMinorUnits,
+    this.currencyCode = const Value.absent(),
+    this.originalAmountMinorUnits = const Value.absent(),
+    this.originalCurrencyCode = const Value.absent(),
+    this.exchangeRateScaled = const Value.absent(),
     this.categoryId = const Value.absent(),
     this.destinationAccountId = const Value.absent(),
     required int transactionDate,
@@ -1496,6 +1741,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Expression<String>? accountId,
     Expression<String>? transactionType,
     Expression<int>? amountMinorUnits,
+    Expression<String>? currencyCode,
+    Expression<int>? originalAmountMinorUnits,
+    Expression<String>? originalCurrencyCode,
+    Expression<int>? exchangeRateScaled,
     Expression<String>? categoryId,
     Expression<String>? destinationAccountId,
     Expression<int>? transactionDate,
@@ -1508,6 +1757,13 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       if (accountId != null) 'account_id': accountId,
       if (transactionType != null) 'transaction_type': transactionType,
       if (amountMinorUnits != null) 'amount_minor_units': amountMinorUnits,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (originalAmountMinorUnits != null)
+        'original_amount_minor_units': originalAmountMinorUnits,
+      if (originalCurrencyCode != null)
+        'original_currency_code': originalCurrencyCode,
+      if (exchangeRateScaled != null)
+        'exchange_rate_scaled': exchangeRateScaled,
       if (categoryId != null) 'category_id': categoryId,
       if (destinationAccountId != null)
         'destination_account_id': destinationAccountId,
@@ -1523,6 +1779,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     Value<String>? accountId,
     Value<String>? transactionType,
     Value<int>? amountMinorUnits,
+    Value<String>? currencyCode,
+    Value<int?>? originalAmountMinorUnits,
+    Value<String?>? originalCurrencyCode,
+    Value<int?>? exchangeRateScaled,
     Value<String?>? categoryId,
     Value<String?>? destinationAccountId,
     Value<int>? transactionDate,
@@ -1535,6 +1795,11 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
       accountId: accountId ?? this.accountId,
       transactionType: transactionType ?? this.transactionType,
       amountMinorUnits: amountMinorUnits ?? this.amountMinorUnits,
+      currencyCode: currencyCode ?? this.currencyCode,
+      originalAmountMinorUnits:
+          originalAmountMinorUnits ?? this.originalAmountMinorUnits,
+      originalCurrencyCode: originalCurrencyCode ?? this.originalCurrencyCode,
+      exchangeRateScaled: exchangeRateScaled ?? this.exchangeRateScaled,
       categoryId: categoryId ?? this.categoryId,
       destinationAccountId: destinationAccountId ?? this.destinationAccountId,
       transactionDate: transactionDate ?? this.transactionDate,
@@ -1558,6 +1823,22 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
     }
     if (amountMinorUnits.present) {
       map['amount_minor_units'] = Variable<int>(amountMinorUnits.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (originalAmountMinorUnits.present) {
+      map['original_amount_minor_units'] = Variable<int>(
+        originalAmountMinorUnits.value,
+      );
+    }
+    if (originalCurrencyCode.present) {
+      map['original_currency_code'] = Variable<String>(
+        originalCurrencyCode.value,
+      );
+    }
+    if (exchangeRateScaled.present) {
+      map['exchange_rate_scaled'] = Variable<int>(exchangeRateScaled.value);
     }
     if (categoryId.present) {
       map['category_id'] = Variable<String>(categoryId.value);
@@ -1589,6 +1870,10 @@ class TransactionsCompanion extends UpdateCompanion<TransactionRow> {
           ..write('accountId: $accountId, ')
           ..write('transactionType: $transactionType, ')
           ..write('amountMinorUnits: $amountMinorUnits, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('originalAmountMinorUnits: $originalAmountMinorUnits, ')
+          ..write('originalCurrencyCode: $originalCurrencyCode, ')
+          ..write('exchangeRateScaled: $exchangeRateScaled, ')
           ..write('categoryId: $categoryId, ')
           ..write('destinationAccountId: $destinationAccountId, ')
           ..write('transactionDate: $transactionDate, ')
@@ -1657,6 +1942,18 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -1664,6 +1961,7 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     year,
     month,
     limitMinorUnits,
+    currencyCode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -1717,6 +2015,15 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
     } else if (isInserting) {
       context.missing(_limitMinorUnitsMeta);
     }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -1750,6 +2057,10 @@ class $BudgetsTable extends Budgets with TableInfo<$BudgetsTable, BudgetRow> {
         DriftSqlType.int,
         data['${effectivePrefix}limit_minor_units'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
     );
   }
 
@@ -1765,12 +2076,14 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
   final int year;
   final int month;
   final int limitMinorUnits;
+  final String currencyCode;
   const BudgetRow({
     required this.id,
     required this.categoryId,
     required this.year,
     required this.month,
     required this.limitMinorUnits,
+    required this.currencyCode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1780,6 +2093,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     map['year'] = Variable<int>(year);
     map['month'] = Variable<int>(month);
     map['limit_minor_units'] = Variable<int>(limitMinorUnits);
+    map['currency_code'] = Variable<String>(currencyCode);
     return map;
   }
 
@@ -1790,6 +2104,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       year: Value(year),
       month: Value(month),
       limitMinorUnits: Value(limitMinorUnits),
+      currencyCode: Value(currencyCode),
     );
   }
 
@@ -1804,6 +2119,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       year: serializer.fromJson<int>(json['year']),
       month: serializer.fromJson<int>(json['month']),
       limitMinorUnits: serializer.fromJson<int>(json['limitMinorUnits']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
     );
   }
   @override
@@ -1815,6 +2131,7 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       'year': serializer.toJson<int>(year),
       'month': serializer.toJson<int>(month),
       'limitMinorUnits': serializer.toJson<int>(limitMinorUnits),
+      'currencyCode': serializer.toJson<String>(currencyCode),
     };
   }
 
@@ -1824,12 +2141,14 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
     int? year,
     int? month,
     int? limitMinorUnits,
+    String? currencyCode,
   }) => BudgetRow(
     id: id ?? this.id,
     categoryId: categoryId ?? this.categoryId,
     year: year ?? this.year,
     month: month ?? this.month,
     limitMinorUnits: limitMinorUnits ?? this.limitMinorUnits,
+    currencyCode: currencyCode ?? this.currencyCode,
   );
   BudgetRow copyWithCompanion(BudgetsCompanion data) {
     return BudgetRow(
@@ -1842,6 +2161,9 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
       limitMinorUnits: data.limitMinorUnits.present
           ? data.limitMinorUnits.value
           : this.limitMinorUnits,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
     );
   }
 
@@ -1852,13 +2174,15 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           ..write('categoryId: $categoryId, ')
           ..write('year: $year, ')
           ..write('month: $month, ')
-          ..write('limitMinorUnits: $limitMinorUnits')
+          ..write('limitMinorUnits: $limitMinorUnits, ')
+          ..write('currencyCode: $currencyCode')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, categoryId, year, month, limitMinorUnits);
+  int get hashCode =>
+      Object.hash(id, categoryId, year, month, limitMinorUnits, currencyCode);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1867,7 +2191,8 @@ class BudgetRow extends DataClass implements Insertable<BudgetRow> {
           other.categoryId == this.categoryId &&
           other.year == this.year &&
           other.month == this.month &&
-          other.limitMinorUnits == this.limitMinorUnits);
+          other.limitMinorUnits == this.limitMinorUnits &&
+          other.currencyCode == this.currencyCode);
 }
 
 class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
@@ -1876,6 +2201,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
   final Value<int> year;
   final Value<int> month;
   final Value<int> limitMinorUnits;
+  final Value<String> currencyCode;
   final Value<int> rowid;
   const BudgetsCompanion({
     this.id = const Value.absent(),
@@ -1883,6 +2209,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     this.year = const Value.absent(),
     this.month = const Value.absent(),
     this.limitMinorUnits = const Value.absent(),
+    this.currencyCode = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   BudgetsCompanion.insert({
@@ -1891,6 +2218,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     required int year,
     required int month,
     required int limitMinorUnits,
+    this.currencyCode = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        categoryId = Value(categoryId),
@@ -1903,6 +2231,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Expression<int>? year,
     Expression<int>? month,
     Expression<int>? limitMinorUnits,
+    Expression<String>? currencyCode,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -1911,6 +2240,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       if (year != null) 'year': year,
       if (month != null) 'month': month,
       if (limitMinorUnits != null) 'limit_minor_units': limitMinorUnits,
+      if (currencyCode != null) 'currency_code': currencyCode,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -1921,6 +2251,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     Value<int>? year,
     Value<int>? month,
     Value<int>? limitMinorUnits,
+    Value<String>? currencyCode,
     Value<int>? rowid,
   }) {
     return BudgetsCompanion(
@@ -1929,6 +2260,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
       year: year ?? this.year,
       month: month ?? this.month,
       limitMinorUnits: limitMinorUnits ?? this.limitMinorUnits,
+      currencyCode: currencyCode ?? this.currencyCode,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -1951,6 +2283,9 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
     if (limitMinorUnits.present) {
       map['limit_minor_units'] = Variable<int>(limitMinorUnits.value);
     }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -1965,6 +2300,7 @@ class BudgetsCompanion extends UpdateCompanion<BudgetRow> {
           ..write('year: $year, ')
           ..write('month: $month, ')
           ..write('limitMinorUnits: $limitMinorUnits, ')
+          ..write('currencyCode: $currencyCode, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -1994,6 +2330,18 @@ class $SavingsGoalsTable extends SavingsGoals
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
   );
   static const VerificationMeta _targetAmountMinorUnitsMeta =
       const VerificationMeta('targetAmountMinorUnits');
@@ -2070,6 +2418,7 @@ class $SavingsGoalsTable extends SavingsGoals
   List<GeneratedColumn> get $columns => [
     id,
     name,
+    currencyCode,
     targetAmountMinorUnits,
     savedAmountMinorUnits,
     targetDate,
@@ -2102,6 +2451,15 @@ class $SavingsGoalsTable extends SavingsGoals
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
     }
     if (data.containsKey('target_amount_minor_units')) {
       context.handle(
@@ -2176,6 +2534,10 @@ class $SavingsGoalsTable extends SavingsGoals
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
       targetAmountMinorUnits: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}target_amount_minor_units'],
@@ -2216,6 +2578,7 @@ class $SavingsGoalsTable extends SavingsGoals
 class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
   final String id;
   final String name;
+  final String currencyCode;
   final int targetAmountMinorUnits;
   final int savedAmountMinorUnits;
   final int? targetDate;
@@ -2226,6 +2589,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
   const SavingsGoalRow({
     required this.id,
     required this.name,
+    required this.currencyCode,
     required this.targetAmountMinorUnits,
     required this.savedAmountMinorUnits,
     this.targetDate,
@@ -2239,6 +2603,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
+    map['currency_code'] = Variable<String>(currencyCode);
     map['target_amount_minor_units'] = Variable<int>(targetAmountMinorUnits);
     map['saved_amount_minor_units'] = Variable<int>(savedAmountMinorUnits);
     if (!nullToAbsent || targetDate != null) {
@@ -2255,6 +2620,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     return SavingsGoalsCompanion(
       id: Value(id),
       name: Value(name),
+      currencyCode: Value(currencyCode),
       targetAmountMinorUnits: Value(targetAmountMinorUnits),
       savedAmountMinorUnits: Value(savedAmountMinorUnits),
       targetDate: targetDate == null && nullToAbsent
@@ -2275,6 +2641,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     return SavingsGoalRow(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
       targetAmountMinorUnits: serializer.fromJson<int>(
         json['targetAmountMinorUnits'],
       ),
@@ -2294,6 +2661,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
+      'currencyCode': serializer.toJson<String>(currencyCode),
       'targetAmountMinorUnits': serializer.toJson<int>(targetAmountMinorUnits),
       'savedAmountMinorUnits': serializer.toJson<int>(savedAmountMinorUnits),
       'targetDate': serializer.toJson<int?>(targetDate),
@@ -2307,6 +2675,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
   SavingsGoalRow copyWith({
     String? id,
     String? name,
+    String? currencyCode,
     int? targetAmountMinorUnits,
     int? savedAmountMinorUnits,
     Value<int?> targetDate = const Value.absent(),
@@ -2317,6 +2686,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
   }) => SavingsGoalRow(
     id: id ?? this.id,
     name: name ?? this.name,
+    currencyCode: currencyCode ?? this.currencyCode,
     targetAmountMinorUnits:
         targetAmountMinorUnits ?? this.targetAmountMinorUnits,
     savedAmountMinorUnits: savedAmountMinorUnits ?? this.savedAmountMinorUnits,
@@ -2330,6 +2700,9 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     return SavingsGoalRow(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
       targetAmountMinorUnits: data.targetAmountMinorUnits.present
           ? data.targetAmountMinorUnits.value
           : this.targetAmountMinorUnits,
@@ -2351,6 +2724,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
     return (StringBuffer('SavingsGoalRow(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('currencyCode: $currencyCode, ')
           ..write('targetAmountMinorUnits: $targetAmountMinorUnits, ')
           ..write('savedAmountMinorUnits: $savedAmountMinorUnits, ')
           ..write('targetDate: $targetDate, ')
@@ -2366,6 +2740,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
   int get hashCode => Object.hash(
     id,
     name,
+    currencyCode,
     targetAmountMinorUnits,
     savedAmountMinorUnits,
     targetDate,
@@ -2380,6 +2755,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
       (other is SavingsGoalRow &&
           other.id == this.id &&
           other.name == this.name &&
+          other.currencyCode == this.currencyCode &&
           other.targetAmountMinorUnits == this.targetAmountMinorUnits &&
           other.savedAmountMinorUnits == this.savedAmountMinorUnits &&
           other.targetDate == this.targetDate &&
@@ -2392,6 +2768,7 @@ class SavingsGoalRow extends DataClass implements Insertable<SavingsGoalRow> {
 class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
   final Value<String> id;
   final Value<String> name;
+  final Value<String> currencyCode;
   final Value<int> targetAmountMinorUnits;
   final Value<int> savedAmountMinorUnits;
   final Value<int?> targetDate;
@@ -2403,6 +2780,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
   const SavingsGoalsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.currencyCode = const Value.absent(),
     this.targetAmountMinorUnits = const Value.absent(),
     this.savedAmountMinorUnits = const Value.absent(),
     this.targetDate = const Value.absent(),
@@ -2415,6 +2793,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
   SavingsGoalsCompanion.insert({
     required String id,
     required String name,
+    this.currencyCode = const Value.absent(),
     required int targetAmountMinorUnits,
     this.savedAmountMinorUnits = const Value.absent(),
     this.targetDate = const Value.absent(),
@@ -2432,6 +2811,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
   static Insertable<SavingsGoalRow> custom({
     Expression<String>? id,
     Expression<String>? name,
+    Expression<String>? currencyCode,
     Expression<int>? targetAmountMinorUnits,
     Expression<int>? savedAmountMinorUnits,
     Expression<int>? targetDate,
@@ -2444,6 +2824,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (currencyCode != null) 'currency_code': currencyCode,
       if (targetAmountMinorUnits != null)
         'target_amount_minor_units': targetAmountMinorUnits,
       if (savedAmountMinorUnits != null)
@@ -2460,6 +2841,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
   SavingsGoalsCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
+    Value<String>? currencyCode,
     Value<int>? targetAmountMinorUnits,
     Value<int>? savedAmountMinorUnits,
     Value<int?>? targetDate,
@@ -2472,6 +2854,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
     return SavingsGoalsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      currencyCode: currencyCode ?? this.currencyCode,
       targetAmountMinorUnits:
           targetAmountMinorUnits ?? this.targetAmountMinorUnits,
       savedAmountMinorUnits:
@@ -2493,6 +2876,9 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
     }
     if (targetAmountMinorUnits.present) {
       map['target_amount_minor_units'] = Variable<int>(
@@ -2530,6 +2916,7 @@ class SavingsGoalsCompanion extends UpdateCompanion<SavingsGoalRow> {
     return (StringBuffer('SavingsGoalsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('currencyCode: $currencyCode, ')
           ..write('targetAmountMinorUnits: $targetAmountMinorUnits, ')
           ..write('savedAmountMinorUnits: $savedAmountMinorUnits, ')
           ..write('targetDate: $targetDate, ')
@@ -2595,6 +2982,39 @@ class $GoalContributionsTable extends GoalContributions
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _currencyCodeMeta = const VerificationMeta(
+    'currencyCode',
+  );
+  @override
+  late final GeneratedColumn<String> currencyCode = GeneratedColumn<String>(
+    'currency_code',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('USD'),
+  );
+  static const VerificationMeta _originalAmountMinorUnitsMeta =
+      const VerificationMeta('originalAmountMinorUnits');
+  @override
+  late final GeneratedColumn<int> originalAmountMinorUnits =
+      GeneratedColumn<int>(
+        'original_amount_minor_units',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _exchangeRateScaledMeta =
+      const VerificationMeta('exchangeRateScaled');
+  @override
+  late final GeneratedColumn<int> exchangeRateScaled = GeneratedColumn<int>(
+    'exchange_rate_scaled',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _contributionTypeMeta = const VerificationMeta(
     'contributionType',
   );
@@ -2632,6 +3052,9 @@ class $GoalContributionsTable extends GoalContributions
     goalId,
     accountId,
     amountMinorUnits,
+    currencyCode,
+    originalAmountMinorUnits,
+    exchangeRateScaled,
     contributionType,
     contributionDate,
     note,
@@ -2679,6 +3102,33 @@ class $GoalContributionsTable extends GoalContributions
       );
     } else if (isInserting) {
       context.missing(_amountMinorUnitsMeta);
+    }
+    if (data.containsKey('currency_code')) {
+      context.handle(
+        _currencyCodeMeta,
+        currencyCode.isAcceptableOrUnknown(
+          data['currency_code']!,
+          _currencyCodeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('original_amount_minor_units')) {
+      context.handle(
+        _originalAmountMinorUnitsMeta,
+        originalAmountMinorUnits.isAcceptableOrUnknown(
+          data['original_amount_minor_units']!,
+          _originalAmountMinorUnitsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('exchange_rate_scaled')) {
+      context.handle(
+        _exchangeRateScaledMeta,
+        exchangeRateScaled.isAcceptableOrUnknown(
+          data['exchange_rate_scaled']!,
+          _exchangeRateScaledMeta,
+        ),
+      );
     }
     if (data.containsKey('contribution_type')) {
       context.handle(
@@ -2733,6 +3183,18 @@ class $GoalContributionsTable extends GoalContributions
         DriftSqlType.int,
         data['${effectivePrefix}amount_minor_units'],
       )!,
+      currencyCode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}currency_code'],
+      )!,
+      originalAmountMinorUnits: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}original_amount_minor_units'],
+      ),
+      exchangeRateScaled: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}exchange_rate_scaled'],
+      ),
       contributionType: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}contribution_type'],
@@ -2760,6 +3222,9 @@ class GoalContributionRow extends DataClass
   final String goalId;
   final String accountId;
   final int amountMinorUnits;
+  final String currencyCode;
+  final int? originalAmountMinorUnits;
+  final int? exchangeRateScaled;
   final String contributionType;
   final int contributionDate;
   final String? note;
@@ -2768,6 +3233,9 @@ class GoalContributionRow extends DataClass
     required this.goalId,
     required this.accountId,
     required this.amountMinorUnits,
+    required this.currencyCode,
+    this.originalAmountMinorUnits,
+    this.exchangeRateScaled,
     required this.contributionType,
     required this.contributionDate,
     this.note,
@@ -2779,6 +3247,15 @@ class GoalContributionRow extends DataClass
     map['goal_id'] = Variable<String>(goalId);
     map['account_id'] = Variable<String>(accountId);
     map['amount_minor_units'] = Variable<int>(amountMinorUnits);
+    map['currency_code'] = Variable<String>(currencyCode);
+    if (!nullToAbsent || originalAmountMinorUnits != null) {
+      map['original_amount_minor_units'] = Variable<int>(
+        originalAmountMinorUnits,
+      );
+    }
+    if (!nullToAbsent || exchangeRateScaled != null) {
+      map['exchange_rate_scaled'] = Variable<int>(exchangeRateScaled);
+    }
     map['contribution_type'] = Variable<String>(contributionType);
     map['contribution_date'] = Variable<int>(contributionDate);
     if (!nullToAbsent || note != null) {
@@ -2793,6 +3270,13 @@ class GoalContributionRow extends DataClass
       goalId: Value(goalId),
       accountId: Value(accountId),
       amountMinorUnits: Value(amountMinorUnits),
+      currencyCode: Value(currencyCode),
+      originalAmountMinorUnits: originalAmountMinorUnits == null && nullToAbsent
+          ? const Value.absent()
+          : Value(originalAmountMinorUnits),
+      exchangeRateScaled: exchangeRateScaled == null && nullToAbsent
+          ? const Value.absent()
+          : Value(exchangeRateScaled),
       contributionType: Value(contributionType),
       contributionDate: Value(contributionDate),
       note: note == null && nullToAbsent ? const Value.absent() : Value(note),
@@ -2809,6 +3293,11 @@ class GoalContributionRow extends DataClass
       goalId: serializer.fromJson<String>(json['goalId']),
       accountId: serializer.fromJson<String>(json['accountId']),
       amountMinorUnits: serializer.fromJson<int>(json['amountMinorUnits']),
+      currencyCode: serializer.fromJson<String>(json['currencyCode']),
+      originalAmountMinorUnits: serializer.fromJson<int?>(
+        json['originalAmountMinorUnits'],
+      ),
+      exchangeRateScaled: serializer.fromJson<int?>(json['exchangeRateScaled']),
       contributionType: serializer.fromJson<String>(json['contributionType']),
       contributionDate: serializer.fromJson<int>(json['contributionDate']),
       note: serializer.fromJson<String?>(json['note']),
@@ -2822,6 +3311,11 @@ class GoalContributionRow extends DataClass
       'goalId': serializer.toJson<String>(goalId),
       'accountId': serializer.toJson<String>(accountId),
       'amountMinorUnits': serializer.toJson<int>(amountMinorUnits),
+      'currencyCode': serializer.toJson<String>(currencyCode),
+      'originalAmountMinorUnits': serializer.toJson<int?>(
+        originalAmountMinorUnits,
+      ),
+      'exchangeRateScaled': serializer.toJson<int?>(exchangeRateScaled),
       'contributionType': serializer.toJson<String>(contributionType),
       'contributionDate': serializer.toJson<int>(contributionDate),
       'note': serializer.toJson<String?>(note),
@@ -2833,6 +3327,9 @@ class GoalContributionRow extends DataClass
     String? goalId,
     String? accountId,
     int? amountMinorUnits,
+    String? currencyCode,
+    Value<int?> originalAmountMinorUnits = const Value.absent(),
+    Value<int?> exchangeRateScaled = const Value.absent(),
     String? contributionType,
     int? contributionDate,
     Value<String?> note = const Value.absent(),
@@ -2841,6 +3338,13 @@ class GoalContributionRow extends DataClass
     goalId: goalId ?? this.goalId,
     accountId: accountId ?? this.accountId,
     amountMinorUnits: amountMinorUnits ?? this.amountMinorUnits,
+    currencyCode: currencyCode ?? this.currencyCode,
+    originalAmountMinorUnits: originalAmountMinorUnits.present
+        ? originalAmountMinorUnits.value
+        : this.originalAmountMinorUnits,
+    exchangeRateScaled: exchangeRateScaled.present
+        ? exchangeRateScaled.value
+        : this.exchangeRateScaled,
     contributionType: contributionType ?? this.contributionType,
     contributionDate: contributionDate ?? this.contributionDate,
     note: note.present ? note.value : this.note,
@@ -2853,6 +3357,15 @@ class GoalContributionRow extends DataClass
       amountMinorUnits: data.amountMinorUnits.present
           ? data.amountMinorUnits.value
           : this.amountMinorUnits,
+      currencyCode: data.currencyCode.present
+          ? data.currencyCode.value
+          : this.currencyCode,
+      originalAmountMinorUnits: data.originalAmountMinorUnits.present
+          ? data.originalAmountMinorUnits.value
+          : this.originalAmountMinorUnits,
+      exchangeRateScaled: data.exchangeRateScaled.present
+          ? data.exchangeRateScaled.value
+          : this.exchangeRateScaled,
       contributionType: data.contributionType.present
           ? data.contributionType.value
           : this.contributionType,
@@ -2870,6 +3383,9 @@ class GoalContributionRow extends DataClass
           ..write('goalId: $goalId, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinorUnits: $amountMinorUnits, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('originalAmountMinorUnits: $originalAmountMinorUnits, ')
+          ..write('exchangeRateScaled: $exchangeRateScaled, ')
           ..write('contributionType: $contributionType, ')
           ..write('contributionDate: $contributionDate, ')
           ..write('note: $note')
@@ -2883,6 +3399,9 @@ class GoalContributionRow extends DataClass
     goalId,
     accountId,
     amountMinorUnits,
+    currencyCode,
+    originalAmountMinorUnits,
+    exchangeRateScaled,
     contributionType,
     contributionDate,
     note,
@@ -2895,6 +3414,9 @@ class GoalContributionRow extends DataClass
           other.goalId == this.goalId &&
           other.accountId == this.accountId &&
           other.amountMinorUnits == this.amountMinorUnits &&
+          other.currencyCode == this.currencyCode &&
+          other.originalAmountMinorUnits == this.originalAmountMinorUnits &&
+          other.exchangeRateScaled == this.exchangeRateScaled &&
           other.contributionType == this.contributionType &&
           other.contributionDate == this.contributionDate &&
           other.note == this.note);
@@ -2905,6 +3427,9 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
   final Value<String> goalId;
   final Value<String> accountId;
   final Value<int> amountMinorUnits;
+  final Value<String> currencyCode;
+  final Value<int?> originalAmountMinorUnits;
+  final Value<int?> exchangeRateScaled;
   final Value<String> contributionType;
   final Value<int> contributionDate;
   final Value<String?> note;
@@ -2914,6 +3439,9 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
     this.goalId = const Value.absent(),
     this.accountId = const Value.absent(),
     this.amountMinorUnits = const Value.absent(),
+    this.currencyCode = const Value.absent(),
+    this.originalAmountMinorUnits = const Value.absent(),
+    this.exchangeRateScaled = const Value.absent(),
     this.contributionType = const Value.absent(),
     this.contributionDate = const Value.absent(),
     this.note = const Value.absent(),
@@ -2924,6 +3452,9 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
     required String goalId,
     required String accountId,
     required int amountMinorUnits,
+    this.currencyCode = const Value.absent(),
+    this.originalAmountMinorUnits = const Value.absent(),
+    this.exchangeRateScaled = const Value.absent(),
     required String contributionType,
     required int contributionDate,
     this.note = const Value.absent(),
@@ -2939,6 +3470,9 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
     Expression<String>? goalId,
     Expression<String>? accountId,
     Expression<int>? amountMinorUnits,
+    Expression<String>? currencyCode,
+    Expression<int>? originalAmountMinorUnits,
+    Expression<int>? exchangeRateScaled,
     Expression<String>? contributionType,
     Expression<int>? contributionDate,
     Expression<String>? note,
@@ -2949,6 +3483,11 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
       if (goalId != null) 'goal_id': goalId,
       if (accountId != null) 'account_id': accountId,
       if (amountMinorUnits != null) 'amount_minor_units': amountMinorUnits,
+      if (currencyCode != null) 'currency_code': currencyCode,
+      if (originalAmountMinorUnits != null)
+        'original_amount_minor_units': originalAmountMinorUnits,
+      if (exchangeRateScaled != null)
+        'exchange_rate_scaled': exchangeRateScaled,
       if (contributionType != null) 'contribution_type': contributionType,
       if (contributionDate != null) 'contribution_date': contributionDate,
       if (note != null) 'note': note,
@@ -2961,6 +3500,9 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
     Value<String>? goalId,
     Value<String>? accountId,
     Value<int>? amountMinorUnits,
+    Value<String>? currencyCode,
+    Value<int?>? originalAmountMinorUnits,
+    Value<int?>? exchangeRateScaled,
     Value<String>? contributionType,
     Value<int>? contributionDate,
     Value<String?>? note,
@@ -2971,6 +3513,10 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
       goalId: goalId ?? this.goalId,
       accountId: accountId ?? this.accountId,
       amountMinorUnits: amountMinorUnits ?? this.amountMinorUnits,
+      currencyCode: currencyCode ?? this.currencyCode,
+      originalAmountMinorUnits:
+          originalAmountMinorUnits ?? this.originalAmountMinorUnits,
+      exchangeRateScaled: exchangeRateScaled ?? this.exchangeRateScaled,
       contributionType: contributionType ?? this.contributionType,
       contributionDate: contributionDate ?? this.contributionDate,
       note: note ?? this.note,
@@ -2992,6 +3538,17 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
     }
     if (amountMinorUnits.present) {
       map['amount_minor_units'] = Variable<int>(amountMinorUnits.value);
+    }
+    if (currencyCode.present) {
+      map['currency_code'] = Variable<String>(currencyCode.value);
+    }
+    if (originalAmountMinorUnits.present) {
+      map['original_amount_minor_units'] = Variable<int>(
+        originalAmountMinorUnits.value,
+      );
+    }
+    if (exchangeRateScaled.present) {
+      map['exchange_rate_scaled'] = Variable<int>(exchangeRateScaled.value);
     }
     if (contributionType.present) {
       map['contribution_type'] = Variable<String>(contributionType.value);
@@ -3015,9 +3572,345 @@ class GoalContributionsCompanion extends UpdateCompanion<GoalContributionRow> {
           ..write('goalId: $goalId, ')
           ..write('accountId: $accountId, ')
           ..write('amountMinorUnits: $amountMinorUnits, ')
+          ..write('currencyCode: $currencyCode, ')
+          ..write('originalAmountMinorUnits: $originalAmountMinorUnits, ')
+          ..write('exchangeRateScaled: $exchangeRateScaled, ')
           ..write('contributionType: $contributionType, ')
           ..write('contributionDate: $contributionDate, ')
           ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $ExchangeRatesTable extends ExchangeRates
+    with TableInfo<$ExchangeRatesTable, ExchangeRateRow> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ExchangeRatesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _baseCurrencyMeta = const VerificationMeta(
+    'baseCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> baseCurrency = GeneratedColumn<String>(
+    'base_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetCurrencyMeta = const VerificationMeta(
+    'targetCurrency',
+  );
+  @override
+  late final GeneratedColumn<String> targetCurrency = GeneratedColumn<String>(
+    'target_currency',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _rateScaledMeta = const VerificationMeta(
+    'rateScaled',
+  );
+  @override
+  late final GeneratedColumn<int> rateScaled = GeneratedColumn<int>(
+    'rate_scaled',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _updatedAtMeta = const VerificationMeta(
+    'updatedAt',
+  );
+  @override
+  late final GeneratedColumn<int> updatedAt = GeneratedColumn<int>(
+    'updated_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    baseCurrency,
+    targetCurrency,
+    rateScaled,
+    updatedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'exchange_rates';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ExchangeRateRow> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('base_currency')) {
+      context.handle(
+        _baseCurrencyMeta,
+        baseCurrency.isAcceptableOrUnknown(
+          data['base_currency']!,
+          _baseCurrencyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_baseCurrencyMeta);
+    }
+    if (data.containsKey('target_currency')) {
+      context.handle(
+        _targetCurrencyMeta,
+        targetCurrency.isAcceptableOrUnknown(
+          data['target_currency']!,
+          _targetCurrencyMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_targetCurrencyMeta);
+    }
+    if (data.containsKey('rate_scaled')) {
+      context.handle(
+        _rateScaledMeta,
+        rateScaled.isAcceptableOrUnknown(data['rate_scaled']!, _rateScaledMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_rateScaledMeta);
+    }
+    if (data.containsKey('updated_at')) {
+      context.handle(
+        _updatedAtMeta,
+        updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_updatedAtMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {baseCurrency, targetCurrency};
+  @override
+  ExchangeRateRow map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ExchangeRateRow(
+      baseCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}base_currency'],
+      )!,
+      targetCurrency: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}target_currency'],
+      )!,
+      rateScaled: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}rate_scaled'],
+      )!,
+      updatedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}updated_at'],
+      )!,
+    );
+  }
+
+  @override
+  $ExchangeRatesTable createAlias(String alias) {
+    return $ExchangeRatesTable(attachedDatabase, alias);
+  }
+}
+
+class ExchangeRateRow extends DataClass implements Insertable<ExchangeRateRow> {
+  final String baseCurrency;
+  final String targetCurrency;
+  final int rateScaled;
+  final int updatedAt;
+  const ExchangeRateRow({
+    required this.baseCurrency,
+    required this.targetCurrency,
+    required this.rateScaled,
+    required this.updatedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['base_currency'] = Variable<String>(baseCurrency);
+    map['target_currency'] = Variable<String>(targetCurrency);
+    map['rate_scaled'] = Variable<int>(rateScaled);
+    map['updated_at'] = Variable<int>(updatedAt);
+    return map;
+  }
+
+  ExchangeRatesCompanion toCompanion(bool nullToAbsent) {
+    return ExchangeRatesCompanion(
+      baseCurrency: Value(baseCurrency),
+      targetCurrency: Value(targetCurrency),
+      rateScaled: Value(rateScaled),
+      updatedAt: Value(updatedAt),
+    );
+  }
+
+  factory ExchangeRateRow.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ExchangeRateRow(
+      baseCurrency: serializer.fromJson<String>(json['baseCurrency']),
+      targetCurrency: serializer.fromJson<String>(json['targetCurrency']),
+      rateScaled: serializer.fromJson<int>(json['rateScaled']),
+      updatedAt: serializer.fromJson<int>(json['updatedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'baseCurrency': serializer.toJson<String>(baseCurrency),
+      'targetCurrency': serializer.toJson<String>(targetCurrency),
+      'rateScaled': serializer.toJson<int>(rateScaled),
+      'updatedAt': serializer.toJson<int>(updatedAt),
+    };
+  }
+
+  ExchangeRateRow copyWith({
+    String? baseCurrency,
+    String? targetCurrency,
+    int? rateScaled,
+    int? updatedAt,
+  }) => ExchangeRateRow(
+    baseCurrency: baseCurrency ?? this.baseCurrency,
+    targetCurrency: targetCurrency ?? this.targetCurrency,
+    rateScaled: rateScaled ?? this.rateScaled,
+    updatedAt: updatedAt ?? this.updatedAt,
+  );
+  ExchangeRateRow copyWithCompanion(ExchangeRatesCompanion data) {
+    return ExchangeRateRow(
+      baseCurrency: data.baseCurrency.present
+          ? data.baseCurrency.value
+          : this.baseCurrency,
+      targetCurrency: data.targetCurrency.present
+          ? data.targetCurrency.value
+          : this.targetCurrency,
+      rateScaled: data.rateScaled.present
+          ? data.rateScaled.value
+          : this.rateScaled,
+      updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExchangeRateRow(')
+          ..write('baseCurrency: $baseCurrency, ')
+          ..write('targetCurrency: $targetCurrency, ')
+          ..write('rateScaled: $rateScaled, ')
+          ..write('updatedAt: $updatedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode =>
+      Object.hash(baseCurrency, targetCurrency, rateScaled, updatedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ExchangeRateRow &&
+          other.baseCurrency == this.baseCurrency &&
+          other.targetCurrency == this.targetCurrency &&
+          other.rateScaled == this.rateScaled &&
+          other.updatedAt == this.updatedAt);
+}
+
+class ExchangeRatesCompanion extends UpdateCompanion<ExchangeRateRow> {
+  final Value<String> baseCurrency;
+  final Value<String> targetCurrency;
+  final Value<int> rateScaled;
+  final Value<int> updatedAt;
+  final Value<int> rowid;
+  const ExchangeRatesCompanion({
+    this.baseCurrency = const Value.absent(),
+    this.targetCurrency = const Value.absent(),
+    this.rateScaled = const Value.absent(),
+    this.updatedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ExchangeRatesCompanion.insert({
+    required String baseCurrency,
+    required String targetCurrency,
+    required int rateScaled,
+    required int updatedAt,
+    this.rowid = const Value.absent(),
+  }) : baseCurrency = Value(baseCurrency),
+       targetCurrency = Value(targetCurrency),
+       rateScaled = Value(rateScaled),
+       updatedAt = Value(updatedAt);
+  static Insertable<ExchangeRateRow> custom({
+    Expression<String>? baseCurrency,
+    Expression<String>? targetCurrency,
+    Expression<int>? rateScaled,
+    Expression<int>? updatedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (baseCurrency != null) 'base_currency': baseCurrency,
+      if (targetCurrency != null) 'target_currency': targetCurrency,
+      if (rateScaled != null) 'rate_scaled': rateScaled,
+      if (updatedAt != null) 'updated_at': updatedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ExchangeRatesCompanion copyWith({
+    Value<String>? baseCurrency,
+    Value<String>? targetCurrency,
+    Value<int>? rateScaled,
+    Value<int>? updatedAt,
+    Value<int>? rowid,
+  }) {
+    return ExchangeRatesCompanion(
+      baseCurrency: baseCurrency ?? this.baseCurrency,
+      targetCurrency: targetCurrency ?? this.targetCurrency,
+      rateScaled: rateScaled ?? this.rateScaled,
+      updatedAt: updatedAt ?? this.updatedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (baseCurrency.present) {
+      map['base_currency'] = Variable<String>(baseCurrency.value);
+    }
+    if (targetCurrency.present) {
+      map['target_currency'] = Variable<String>(targetCurrency.value);
+    }
+    if (rateScaled.present) {
+      map['rate_scaled'] = Variable<int>(rateScaled.value);
+    }
+    if (updatedAt.present) {
+      map['updated_at'] = Variable<int>(updatedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ExchangeRatesCompanion(')
+          ..write('baseCurrency: $baseCurrency, ')
+          ..write('targetCurrency: $targetCurrency, ')
+          ..write('rateScaled: $rateScaled, ')
+          ..write('updatedAt: $updatedAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3034,6 +3927,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SavingsGoalsTable savingsGoals = $SavingsGoalsTable(this);
   late final $GoalContributionsTable goalContributions =
       $GoalContributionsTable(this);
+  late final $ExchangeRatesTable exchangeRates = $ExchangeRatesTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -3045,6 +3939,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     budgets,
     savingsGoals,
     goalContributions,
+    exchangeRates,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -3069,6 +3964,7 @@ typedef $$AccountsTableCreateCompanionBuilder = AccountsCompanion Function({
   required String id,
   required String name,
   required String accountType,
+  Value<String> currencyCode,
   Value<int> initialBalanceMinorUnits,
   Value<int> currentBalanceMinorUnits,
   Value<bool> isArchived,
@@ -3081,6 +3977,7 @@ typedef $$AccountsTableUpdateCompanionBuilder = AccountsCompanion Function({
   Value<String> id,
   Value<String> name,
   Value<String> accountType,
+  Value<String> currencyCode,
   Value<int> initialBalanceMinorUnits,
   Value<int> currentBalanceMinorUnits,
   Value<bool> isArchived,
@@ -3179,6 +4076,11 @@ class $$AccountsTableFilterComposer
 
   ColumnFilters<String> get accountType => $composableBuilder(
     column: $table.accountType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -3312,6 +4214,11 @@ class $$AccountsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get initialBalanceMinorUnits => $composableBuilder(
     column: $table.initialBalanceMinorUnits,
     builder: (column) => ColumnOrderings(column),
@@ -3360,6 +4267,11 @@ class $$AccountsTableAnnotationComposer
 
   GeneratedColumn<String> get accountType => $composableBuilder(
     column: $table.accountType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => column,
   );
 
@@ -3499,6 +4411,7 @@ class $$AccountsTableTableManager
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> accountType = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
                 Value<int> initialBalanceMinorUnits = const Value.absent(),
                 Value<int> currentBalanceMinorUnits = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
@@ -3510,6 +4423,7 @@ class $$AccountsTableTableManager
                 id: id,
                 name: name,
                 accountType: accountType,
+                currencyCode: currencyCode,
                 initialBalanceMinorUnits: initialBalanceMinorUnits,
                 currentBalanceMinorUnits: currentBalanceMinorUnits,
                 isArchived: isArchived,
@@ -3523,6 +4437,7 @@ class $$AccountsTableTableManager
                 required String id,
                 required String name,
                 required String accountType,
+                Value<String> currencyCode = const Value.absent(),
                 Value<int> initialBalanceMinorUnits = const Value.absent(),
                 Value<int> currentBalanceMinorUnits = const Value.absent(),
                 Value<bool> isArchived = const Value.absent(),
@@ -3534,6 +4449,7 @@ class $$AccountsTableTableManager
                 id: id,
                 name: name,
                 accountType: accountType,
+                currencyCode: currencyCode,
                 initialBalanceMinorUnits: initialBalanceMinorUnits,
                 currentBalanceMinorUnits: currentBalanceMinorUnits,
                 isArchived: isArchived,
@@ -4076,6 +4992,10 @@ typedef $$TransactionsTableCreateCompanionBuilder =
       required String accountId,
       required String transactionType,
       required int amountMinorUnits,
+      Value<String> currencyCode,
+      Value<int?> originalAmountMinorUnits,
+      Value<String?> originalCurrencyCode,
+      Value<int?> exchangeRateScaled,
       Value<String?> categoryId,
       Value<String?> destinationAccountId,
       required int transactionDate,
@@ -4089,6 +5009,10 @@ typedef $$TransactionsTableUpdateCompanionBuilder =
       Value<String> accountId,
       Value<String> transactionType,
       Value<int> amountMinorUnits,
+      Value<String> currencyCode,
+      Value<int?> originalAmountMinorUnits,
+      Value<String?> originalCurrencyCode,
+      Value<int?> exchangeRateScaled,
       Value<String?> categoryId,
       Value<String?> destinationAccountId,
       Value<int> transactionDate,
@@ -4177,6 +5101,26 @@ class $$TransactionsTableFilterComposer
 
   ColumnFilters<int> get amountMinorUnits => $composableBuilder(
     column: $table.amountMinorUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get originalCurrencyCode => $composableBuilder(
+    column: $table.originalCurrencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4289,6 +5233,26 @@ class $$TransactionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get originalCurrencyCode => $composableBuilder(
+    column: $table.originalCurrencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get transactionDate => $composableBuilder(
     column: $table.transactionDate,
     builder: (column) => ColumnOrderings(column),
@@ -4393,6 +5357,26 @@ class $$TransactionsTableAnnotationComposer
 
   GeneratedColumn<int> get amountMinorUnits => $composableBuilder(
     column: $table.amountMinorUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get originalCurrencyCode => $composableBuilder(
+    column: $table.originalCurrencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
     builder: (column) => column,
   );
 
@@ -4513,6 +5497,10 @@ class $$TransactionsTableTableManager
                 Value<String> accountId = const Value.absent(),
                 Value<String> transactionType = const Value.absent(),
                 Value<int> amountMinorUnits = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<int?> originalAmountMinorUnits = const Value.absent(),
+                Value<String?> originalCurrencyCode = const Value.absent(),
+                Value<int?> exchangeRateScaled = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> destinationAccountId = const Value.absent(),
                 Value<int> transactionDate = const Value.absent(),
@@ -4524,6 +5512,10 @@ class $$TransactionsTableTableManager
                 accountId: accountId,
                 transactionType: transactionType,
                 amountMinorUnits: amountMinorUnits,
+                currencyCode: currencyCode,
+                originalAmountMinorUnits: originalAmountMinorUnits,
+                originalCurrencyCode: originalCurrencyCode,
+                exchangeRateScaled: exchangeRateScaled,
                 categoryId: categoryId,
                 destinationAccountId: destinationAccountId,
                 transactionDate: transactionDate,
@@ -4537,6 +5529,10 @@ class $$TransactionsTableTableManager
                 required String accountId,
                 required String transactionType,
                 required int amountMinorUnits,
+                Value<String> currencyCode = const Value.absent(),
+                Value<int?> originalAmountMinorUnits = const Value.absent(),
+                Value<String?> originalCurrencyCode = const Value.absent(),
+                Value<int?> exchangeRateScaled = const Value.absent(),
                 Value<String?> categoryId = const Value.absent(),
                 Value<String?> destinationAccountId = const Value.absent(),
                 required int transactionDate,
@@ -4548,6 +5544,10 @@ class $$TransactionsTableTableManager
                 accountId: accountId,
                 transactionType: transactionType,
                 amountMinorUnits: amountMinorUnits,
+                currencyCode: currencyCode,
+                originalAmountMinorUnits: originalAmountMinorUnits,
+                originalCurrencyCode: originalCurrencyCode,
+                exchangeRateScaled: exchangeRateScaled,
                 categoryId: categoryId,
                 destinationAccountId: destinationAccountId,
                 transactionDate: transactionDate,
@@ -4657,6 +5657,7 @@ typedef $$BudgetsTableCreateCompanionBuilder = BudgetsCompanion Function({
   required int year,
   required int month,
   required int limitMinorUnits,
+  Value<String> currencyCode,
   Value<int> rowid,
 });
 typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
@@ -4665,6 +5666,7 @@ typedef $$BudgetsTableUpdateCompanionBuilder = BudgetsCompanion Function({
   Value<int> year,
   Value<int> month,
   Value<int> limitMinorUnits,
+  Value<String> currencyCode,
   Value<int> rowid,
 });
 
@@ -4716,6 +5718,11 @@ class $$BudgetsTableFilterComposer
 
   ColumnFilters<int> get limitMinorUnits => $composableBuilder(
     column: $table.limitMinorUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4772,6 +5779,11 @@ class $$BudgetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   $$CategoriesTableOrderingComposer get categoryId {
     final $$CategoriesTableOrderingComposer composer = $composerBuilder(
       composer: this,
@@ -4816,6 +5828,11 @@ class $$BudgetsTableAnnotationComposer
 
   GeneratedColumn<int> get limitMinorUnits => $composableBuilder(
     column: $table.limitMinorUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => column,
   );
 
@@ -4876,6 +5893,7 @@ class $$BudgetsTableTableManager
                 Value<int> year = const Value.absent(),
                 Value<int> month = const Value.absent(),
                 Value<int> limitMinorUnits = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion(
                 id: id,
@@ -4883,6 +5901,7 @@ class $$BudgetsTableTableManager
                 year: year,
                 month: month,
                 limitMinorUnits: limitMinorUnits,
+                currencyCode: currencyCode,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -4892,6 +5911,7 @@ class $$BudgetsTableTableManager
                 required int year,
                 required int month,
                 required int limitMinorUnits,
+                Value<String> currencyCode = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => BudgetsCompanion.insert(
                 id: id,
@@ -4899,6 +5919,7 @@ class $$BudgetsTableTableManager
                 year: year,
                 month: month,
                 limitMinorUnits: limitMinorUnits,
+                currencyCode: currencyCode,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
@@ -4970,6 +5991,7 @@ typedef $$SavingsGoalsTableCreateCompanionBuilder =
     SavingsGoalsCompanion Function({
       required String id,
       required String name,
+      Value<String> currencyCode,
       required int targetAmountMinorUnits,
       Value<int> savedAmountMinorUnits,
       Value<int?> targetDate,
@@ -4983,6 +6005,7 @@ typedef $$SavingsGoalsTableUpdateCompanionBuilder =
     SavingsGoalsCompanion Function({
       Value<String> id,
       Value<String> name,
+      Value<String> currencyCode,
       Value<int> targetAmountMinorUnits,
       Value<int> savedAmountMinorUnits,
       Value<int?> targetDate,
@@ -5032,6 +6055,11 @@ class $$SavingsGoalsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5115,6 +6143,11 @@ class $$SavingsGoalsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get targetAmountMinorUnits => $composableBuilder(
     column: $table.targetAmountMinorUnits,
     builder: (column) => ColumnOrderings(column),
@@ -5165,6 +6198,11 @@ class $$SavingsGoalsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get targetAmountMinorUnits => $composableBuilder(
     column: $table.targetAmountMinorUnits,
@@ -5250,6 +6288,7 @@ class $$SavingsGoalsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
                 Value<int> targetAmountMinorUnits = const Value.absent(),
                 Value<int> savedAmountMinorUnits = const Value.absent(),
                 Value<int?> targetDate = const Value.absent(),
@@ -5261,6 +6300,7 @@ class $$SavingsGoalsTableTableManager
               }) => SavingsGoalsCompanion(
                 id: id,
                 name: name,
+                currencyCode: currencyCode,
                 targetAmountMinorUnits: targetAmountMinorUnits,
                 savedAmountMinorUnits: savedAmountMinorUnits,
                 targetDate: targetDate,
@@ -5274,6 +6314,7 @@ class $$SavingsGoalsTableTableManager
               ({
                 required String id,
                 required String name,
+                Value<String> currencyCode = const Value.absent(),
                 required int targetAmountMinorUnits,
                 Value<int> savedAmountMinorUnits = const Value.absent(),
                 Value<int?> targetDate = const Value.absent(),
@@ -5285,6 +6326,7 @@ class $$SavingsGoalsTableTableManager
               }) => SavingsGoalsCompanion.insert(
                 id: id,
                 name: name,
+                currencyCode: currencyCode,
                 targetAmountMinorUnits: targetAmountMinorUnits,
                 savedAmountMinorUnits: savedAmountMinorUnits,
                 targetDate: targetDate,
@@ -5359,6 +6401,9 @@ typedef $$GoalContributionsTableCreateCompanionBuilder =
       required String goalId,
       required String accountId,
       required int amountMinorUnits,
+      Value<String> currencyCode,
+      Value<int?> originalAmountMinorUnits,
+      Value<int?> exchangeRateScaled,
       required String contributionType,
       required int contributionDate,
       Value<String?> note,
@@ -5370,6 +6415,9 @@ typedef $$GoalContributionsTableUpdateCompanionBuilder =
       Value<String> goalId,
       Value<String> accountId,
       Value<int> amountMinorUnits,
+      Value<String> currencyCode,
+      Value<int?> originalAmountMinorUnits,
+      Value<int?> exchangeRateScaled,
       Value<String> contributionType,
       Value<int> contributionDate,
       Value<String?> note,
@@ -5440,6 +6488,21 @@ class $$GoalContributionsTableFilterComposer
 
   ColumnFilters<int> get amountMinorUnits => $composableBuilder(
     column: $table.amountMinorUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5524,6 +6587,21 @@ class $$GoalContributionsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get contributionType => $composableBuilder(
     column: $table.contributionType,
     builder: (column) => ColumnOrderings(column),
@@ -5600,6 +6678,21 @@ class $$GoalContributionsTableAnnotationComposer
 
   GeneratedColumn<int> get amountMinorUnits => $composableBuilder(
     column: $table.amountMinorUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get currencyCode => $composableBuilder(
+    column: $table.currencyCode,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get originalAmountMinorUnits => $composableBuilder(
+    column: $table.originalAmountMinorUnits,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get exchangeRateScaled => $composableBuilder(
+    column: $table.exchangeRateScaled,
     builder: (column) => column,
   );
 
@@ -5700,6 +6793,9 @@ class $$GoalContributionsTableTableManager
                 Value<String> goalId = const Value.absent(),
                 Value<String> accountId = const Value.absent(),
                 Value<int> amountMinorUnits = const Value.absent(),
+                Value<String> currencyCode = const Value.absent(),
+                Value<int?> originalAmountMinorUnits = const Value.absent(),
+                Value<int?> exchangeRateScaled = const Value.absent(),
                 Value<String> contributionType = const Value.absent(),
                 Value<int> contributionDate = const Value.absent(),
                 Value<String?> note = const Value.absent(),
@@ -5709,6 +6805,9 @@ class $$GoalContributionsTableTableManager
                 goalId: goalId,
                 accountId: accountId,
                 amountMinorUnits: amountMinorUnits,
+                currencyCode: currencyCode,
+                originalAmountMinorUnits: originalAmountMinorUnits,
+                exchangeRateScaled: exchangeRateScaled,
                 contributionType: contributionType,
                 contributionDate: contributionDate,
                 note: note,
@@ -5720,6 +6819,9 @@ class $$GoalContributionsTableTableManager
                 required String goalId,
                 required String accountId,
                 required int amountMinorUnits,
+                Value<String> currencyCode = const Value.absent(),
+                Value<int?> originalAmountMinorUnits = const Value.absent(),
+                Value<int?> exchangeRateScaled = const Value.absent(),
                 required String contributionType,
                 required int contributionDate,
                 Value<String?> note = const Value.absent(),
@@ -5729,6 +6831,9 @@ class $$GoalContributionsTableTableManager
                 goalId: goalId,
                 accountId: accountId,
                 amountMinorUnits: amountMinorUnits,
+                currencyCode: currencyCode,
+                originalAmountMinorUnits: originalAmountMinorUnits,
+                exchangeRateScaled: exchangeRateScaled,
                 contributionType: contributionType,
                 contributionDate: contributionDate,
                 note: note,
@@ -5812,6 +6917,202 @@ typedef $$GoalContributionsTableProcessedTableManager =
       GoalContributionRow,
       PrefetchHooks Function({bool goalId, bool accountId})
     >;
+typedef $$ExchangeRatesTableCreateCompanionBuilder =
+    ExchangeRatesCompanion Function({
+      required String baseCurrency,
+      required String targetCurrency,
+      required int rateScaled,
+      required int updatedAt,
+      Value<int> rowid,
+    });
+typedef $$ExchangeRatesTableUpdateCompanionBuilder =
+    ExchangeRatesCompanion Function({
+      Value<String> baseCurrency,
+      Value<String> targetCurrency,
+      Value<int> rateScaled,
+      Value<int> updatedAt,
+      Value<int> rowid,
+    });
+
+class $$ExchangeRatesTableFilterComposer
+    extends Composer<_$AppDatabase, $ExchangeRatesTable> {
+  $$ExchangeRatesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get targetCurrency => $composableBuilder(
+    column: $table.targetCurrency,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get rateScaled => $composableBuilder(
+    column: $table.rateScaled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ExchangeRatesTableOrderingComposer
+    extends Composer<_$AppDatabase, $ExchangeRatesTable> {
+  $$ExchangeRatesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get targetCurrency => $composableBuilder(
+    column: $table.targetCurrency,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get rateScaled => $composableBuilder(
+    column: $table.rateScaled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get updatedAt => $composableBuilder(
+    column: $table.updatedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ExchangeRatesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $ExchangeRatesTable> {
+  $$ExchangeRatesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get baseCurrency => $composableBuilder(
+    column: $table.baseCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get targetCurrency => $composableBuilder(
+    column: $table.targetCurrency,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get rateScaled => $composableBuilder(
+    column: $table.rateScaled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get updatedAt =>
+      $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+}
+
+class $$ExchangeRatesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $ExchangeRatesTable,
+          ExchangeRateRow,
+          $$ExchangeRatesTableFilterComposer,
+          $$ExchangeRatesTableOrderingComposer,
+          $$ExchangeRatesTableAnnotationComposer,
+          $$ExchangeRatesTableCreateCompanionBuilder,
+          $$ExchangeRatesTableUpdateCompanionBuilder,
+          (
+            ExchangeRateRow,
+            BaseReferences<_$AppDatabase, $ExchangeRatesTable, ExchangeRateRow>,
+          ),
+          ExchangeRateRow,
+          PrefetchHooks Function()
+        > {
+  $$ExchangeRatesTableTableManager(_$AppDatabase db, $ExchangeRatesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ExchangeRatesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ExchangeRatesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ExchangeRatesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> baseCurrency = const Value.absent(),
+                Value<String> targetCurrency = const Value.absent(),
+                Value<int> rateScaled = const Value.absent(),
+                Value<int> updatedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ExchangeRatesCompanion(
+                baseCurrency: baseCurrency,
+                targetCurrency: targetCurrency,
+                rateScaled: rateScaled,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String baseCurrency,
+                required String targetCurrency,
+                required int rateScaled,
+                required int updatedAt,
+                Value<int> rowid = const Value.absent(),
+              }) => ExchangeRatesCompanion.insert(
+                baseCurrency: baseCurrency,
+                targetCurrency: targetCurrency,
+                rateScaled: rateScaled,
+                updatedAt: updatedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map(
+                (e) => (
+                  e.readTable<$ExchangeRatesTable, ExchangeRateRow>(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $ExchangeRatesTable,
+                    ExchangeRateRow
+                  >(db, table, e),
+                ),
+              )
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ExchangeRatesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $ExchangeRatesTable,
+      ExchangeRateRow,
+      $$ExchangeRatesTableFilterComposer,
+      $$ExchangeRatesTableOrderingComposer,
+      $$ExchangeRatesTableAnnotationComposer,
+      $$ExchangeRatesTableCreateCompanionBuilder,
+      $$ExchangeRatesTableUpdateCompanionBuilder,
+      (
+        ExchangeRateRow,
+        BaseReferences<_$AppDatabase, $ExchangeRatesTable, ExchangeRateRow>,
+      ),
+      ExchangeRateRow,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -5828,4 +7129,6 @@ class $AppDatabaseManager {
       $$SavingsGoalsTableTableManager(_db, _db.savingsGoals);
   $$GoalContributionsTableTableManager get goalContributions =>
       $$GoalContributionsTableTableManager(_db, _db.goalContributions);
+  $$ExchangeRatesTableTableManager get exchangeRates =>
+      $$ExchangeRatesTableTableManager(_db, _db.exchangeRates);
 }

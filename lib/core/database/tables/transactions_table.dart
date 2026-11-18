@@ -9,6 +9,10 @@ class Transactions extends Table {
   TextColumn get accountId => text().references(Accounts, #id, onDelete: KeyAction.restrict)();
   TextColumn get transactionType => text()();
   IntColumn get amountMinorUnits => integer()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
+  IntColumn get originalAmountMinorUnits => integer().nullable()();
+  TextColumn get originalCurrencyCode => text().nullable()();
+  IntColumn get exchangeRateScaled => integer().nullable()();
   @ReferenceName('categoryTransactions')
   TextColumn get categoryId => text().nullable().references(Categories, #id, onDelete: KeyAction.restrict)();
   @ReferenceName('destinationAccountTransactions')

@@ -10,6 +10,9 @@ class GoalContributions extends Table {
   @ReferenceName('accountGoalContributions')
   TextColumn get accountId => text().references(Accounts, #id, onDelete: KeyAction.restrict)();
   IntColumn get amountMinorUnits => integer()();
+  TextColumn get currencyCode => text().withDefault(const Constant('USD'))();
+  IntColumn get originalAmountMinorUnits => integer().nullable()();
+  IntColumn get exchangeRateScaled => integer().nullable()();
   TextColumn get contributionType => text()(); // 'deposit' | 'withdrawal'
   IntColumn get contributionDate => integer()();
   TextColumn get note => text().nullable()();
