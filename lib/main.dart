@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_native_splash/flutter_native_splash.dart';
 import 'core/database/app_database.dart';
+import 'core/theme/app_branding.dart';
 import 'core/theme/app_theme.dart';
 import 'features/accounts/data/repositories/account_repository_impl.dart';
 import 'features/accounts/domain/repositories/account_repository.dart';
@@ -32,7 +34,8 @@ import 'features/transactions/domain/repositories/transaction_repository.dart';
 import 'features/transactions/presentation/cubit/transactions_cubit.dart';
 
 void main() {
-  WidgetsFlutterBinding.ensureInitialized();
+  final widgetsBinding = WidgetsFlutterBinding.ensureInitialized();
+  FlutterNativeSplash.preserve(widgetsBinding: widgetsBinding);
   runApp(const BudgetTrackerApp());
 }
 
@@ -104,6 +107,9 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
 
     _database.seedDefaultCategoriesIfEmpty();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      FlutterNativeSplash.remove();
+    });
   }
 
   @override
@@ -165,7 +171,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           ),
         ],
         child: MaterialApp(
-          title: 'Budget Tracker',
+          title: AppBranding.appName,
           debugShowCheckedModeBanner: false,
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
