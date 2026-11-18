@@ -56,6 +56,21 @@ class GoalNotFoundFailure extends DomainFailure {
       : super(message ?? 'Savings goal was not found.');
 }
 
+class CurrencyMismatchFailure extends DomainFailure {
+  final String sourceCurrency;
+  final String targetCurrency;
+
+  const CurrencyMismatchFailure(this.sourceCurrency, this.targetCurrency, [String? message])
+      : super(message ?? 'Cannot perform arithmetic on differing currencies: $sourceCurrency and $targetCurrency.');
+}
+
+class UnsupportedCurrencyFailure extends DomainFailure {
+  final String currencyCode;
+
+  const UnsupportedCurrencyFailure(this.currencyCode, [String? message])
+      : super(message ?? 'Unsupported currency code: $currencyCode.');
+}
+
 class DatabaseFailure extends DomainFailure {
   const DatabaseFailure(super.message);
 }
