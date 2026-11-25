@@ -16,6 +16,8 @@ class Budget extends Equatable {
     required this.limitAmount,
   });
 
+  String get currencyCode => limitAmount.currencyCode;
+
   Budget copyWith({
     String? id,
     String? categoryId,

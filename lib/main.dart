@@ -19,6 +19,9 @@ import 'features/budgets/presentation/cubit/budgets_cubit.dart';
 import 'features/categories/data/repositories/category_repository_impl.dart';
 import 'features/categories/domain/repositories/category_repository.dart';
 import 'features/categories/presentation/cubit/categories_cubit.dart';
+import 'features/currency/data/repositories/currency_repository_impl.dart';
+import 'features/currency/domain/repositories/currency_repository.dart';
+import 'features/currency/presentation/cubit/currency_cubit.dart';
 import 'features/reports/data/repositories/reports_repository_impl.dart';
 import 'features/reports/domain/repositories/reports_repository.dart';
 import 'features/reports/presentation/cubit/reports_cubit.dart';
@@ -49,6 +52,7 @@ class BudgetTrackerApp extends StatefulWidget {
   final ReportsRepository? reportsRepository;
   final SecurityRepository? securityRepository;
   final BackupRepository? backupRepository;
+  final CurrencyRepository? currencyRepository;
   final ShareService? shareService;
   final FilePickerService? filePickerService;
 
@@ -63,6 +67,7 @@ class BudgetTrackerApp extends StatefulWidget {
     this.reportsRepository,
     this.securityRepository,
     this.backupRepository,
+    this.currencyRepository,
     this.shareService,
     this.filePickerService,
   });
@@ -81,6 +86,7 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
   late final ReportsRepository _reportsRepository;
   late final SecurityRepository _securityRepository;
   late final BackupRepository _backupRepository;
+  late final CurrencyRepository _currencyRepository;
   late final ShareService _shareService;
   late final FilePickerService _filePickerService;
   bool _isLocalDb = false;
@@ -95,12 +101,15 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
       _isLocalDb = true;
     }
 
+    _currencyRepository = widget.currencyRepository ?? CurrencyRepositoryImpl(database: _database);
     _accountRepository = widget.accountRepository ?? AccountRepositoryImpl(_database);
     _categoryRepository = widget.categoryRepository ?? CategoryRepositoryImpl(_database);
     _transactionRepository = widget.transactionRepository ?? TransactionRepositoryImpl(_database);
-    _budgetRepository = widget.budgetRepository ?? BudgetRepositoryImpl(_database);
+    _budgetRepository = widget.budgetRepository ??
+        BudgetRepositoryImpl(_database, currencyRepository: _currencyRepository);
     _savingsGoalRepository = widget.savingsGoalRepository ?? SavingsGoalRepositoryImpl(_database);
-    _reportsRepository = widget.reportsRepository ?? ReportsRepositoryImpl(_database);
+    _reportsRepository = widget.reportsRepository ??
+        ReportsRepositoryImpl(_database, currencyRepository: _currencyRepository);
     _securityRepository = widget.securityRepository ?? SecurityRepositoryImpl();
     _backupRepository = widget.backupRepository ?? BackupRepositoryImpl(database: _database);
     _shareService = widget.shareService ?? ShareServiceImpl();
@@ -133,13 +142,18 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
         RepositoryProvider<ReportsRepository>.value(value: _reportsRepository),
         RepositoryProvider<SecurityRepository>.value(value: _securityRepository),
         RepositoryProvider<BackupRepository>.value(value: _backupRepository),
+        RepositoryProvider<CurrencyRepository>.value(value: _currencyRepository),
         RepositoryProvider<ShareService>.value(value: _shareService),
         RepositoryProvider<FilePickerService>.value(value: _filePickerService),
       ],
       child: MultiBlocProvider(
         providers: [
+          BlocProvider<CurrencyCubit>(
+            create: (context) => CurrencyCubit(_currencyRepository)..loadCurrencySettings(),
+          ),
           BlocProvider<AccountsCubit>(
-            create: (context) => AccountsCubit(_accountRepository)..loadAccounts(),
+            create: (context) =>
+                AccountsCubit(_accountRepository, currencyRepository: _currencyRepository)..loadAccounts(),
           ),
           BlocProvider<CategoriesCubit>(
             create: (context) => CategoriesCubit(_categoryRepository)..loadCategories(),

@@ -4,6 +4,7 @@ import 'package:intl/intl.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../categories/domain/entities/category.dart';
+import '../../../currency/domain/repositories/currency_repository.dart';
 import '../../../savings_goals/domain/entities/goal_contribution.dart';
 import '../../../transactions/domain/entities/transaction.dart';
 import '../../domain/entities/cash_flow_report.dart';
@@ -14,8 +15,55 @@ import '../../domain/repositories/reports_repository.dart';
 
 class ReportsRepositoryImpl implements ReportsRepository {
   final AppDatabase database;
+  final CurrencyRepository? currencyRepository;
 
-  ReportsRepositoryImpl(this.database);
+  ReportsRepositoryImpl(this.database, {this.currencyRepository});
+
+  Future<String> _getReportingCurrency() async {
+    if (currencyRepository != null) {
+      return await currencyRepository!.getPrimaryReportingCurrency();
+    }
+    return Money.defaultCurrency;
+  }
+
+  Future<int> _convertToReportingCurrency({
+    required int amountMinor,
+    required String currencyCode,
+    String? originalCurrencyCode,
+    int? originalAmountMinor,
+    int? exchangeRateScaled,
+    required String targetCurrency,
+  }) async {
+    if (currencyCode.toUpperCase() == targetCurrency.toUpperCase()) {
+      return amountMinor;
+    }
+
+    if (originalCurrencyCode?.toUpperCase() == targetCurrency.toUpperCase() &&
+        originalAmountMinor != null) {
+      return originalAmountMinor;
+    }
+
+    if (currencyRepository != null) {
+      try {
+        final converted = await currencyRepository!.convertAmount(
+          amount: Money(amountMinor, currencyCode),
+          targetCurrency: targetCurrency,
+        );
+        return converted.minorUnits;
+      } catch (_) {}
+    }
+
+    if (exchangeRateScaled != null && exchangeRateScaled > 0) {
+      final converted = Money.convert(
+        from: Money(amountMinor, currencyCode),
+        toCurrency: targetCurrency,
+        rateScaled: exchangeRateScaled,
+      );
+      return converted.minorUnits;
+    }
+
+    return amountMinor;
+  }
 
   @override
   Future<CashFlowReport> getCashFlowReport(
@@ -30,6 +78,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
     final startMs = range.start.toUtc().millisecondsSinceEpoch;
     final endMs = range.end.toUtc().millisecondsSinceEpoch;
+    final reportingCurrency = await _getReportingCurrency();
 
     // Fetch transactions within timeframe, strictly excluding transfers
     final rows = await (database.select(database.transactions)
@@ -42,17 +91,29 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
     int totalIncomeMinor = 0;
     int totalExpenseMinor = 0;
+    final convertedRows = <_ConvertedRow>[];
 
     for (final row in rows) {
+      final convertedMinor = await _convertToReportingCurrency(
+        amountMinor: row.amountMinorUnits,
+        currencyCode: row.currencyCode,
+        originalCurrencyCode: row.originalCurrencyCode,
+        originalAmountMinor: row.originalAmountMinorUnits,
+        exchangeRateScaled: row.exchangeRateScaled,
+        targetCurrency: reportingCurrency,
+      );
+
+      convertedRows.add(_ConvertedRow(row, convertedMinor));
+
       if (row.transactionType == TransactionType.income.name) {
-        totalIncomeMinor += row.amountMinorUnits;
+        totalIncomeMinor += convertedMinor;
       } else if (row.transactionType == TransactionType.expense.name) {
-        totalExpenseMinor += row.amountMinorUnits;
+        totalExpenseMinor += convertedMinor;
       }
     }
 
-    final totalIncome = Money(totalIncomeMinor);
-    final totalExpense = Money(totalExpenseMinor);
+    final totalIncome = Money(totalIncomeMinor, reportingCurrency);
+    final totalExpense = Money(totalExpenseMinor, reportingCurrency);
     final netCashFlow = totalIncome - totalExpense;
     final savingsRate = CashFlowReport.calculateSavingsRate(
       totalIncome: totalIncome,
@@ -60,7 +121,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
     );
 
     // Compute monthly breakdown data points
-    final monthlyData = _computeMonthlyData(range, rows);
+    final monthlyData = _computeMonthlyData(range, convertedRows, reportingCurrency);
 
     return CashFlowReport(
       totalIncome: totalIncome,
@@ -73,7 +134,8 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
   List<CashFlowDataPoint> _computeMonthlyData(
     DateTimeRange range,
-    List<TransactionRow> rows,
+    List<_ConvertedRow> convertedRows,
+    String reportingCurrency,
   ) {
     final points = <CashFlowDataPoint>[];
 
@@ -92,18 +154,18 @@ class ReportsRepositoryImpl implements ReportsRepository {
       int mIncome = 0;
       int mExpense = 0;
 
-      for (final r in rows) {
-        if (r.transactionDate >= mStartMs && r.transactionDate <= mEndMs) {
-          if (r.transactionType == TransactionType.income.name) {
-            mIncome += r.amountMinorUnits;
-          } else if (r.transactionType == TransactionType.expense.name) {
-            mExpense += r.amountMinorUnits;
+      for (final cr in convertedRows) {
+        if (cr.row.transactionDate >= mStartMs && cr.row.transactionDate <= mEndMs) {
+          if (cr.row.transactionType == TransactionType.income.name) {
+            mIncome += cr.convertedAmountMinor;
+          } else if (cr.row.transactionType == TransactionType.expense.name) {
+            mExpense += cr.convertedAmountMinor;
           }
         }
       }
 
-      final inc = Money(mIncome);
-      final exp = Money(mExpense);
+      final inc = Money(mIncome, reportingCurrency);
+      final exp = Money(mExpense, reportingCurrency);
       final net = inc - exp;
       final label = DateFormat.MMM().format(monthStart);
 
@@ -137,6 +199,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
     final startMs = range.start.toUtc().millisecondsSinceEpoch;
     final endMs = range.end.toUtc().millisecondsSinceEpoch;
+    final reportingCurrency = await _getReportingCurrency();
 
     // Fetch expense transactions within range
     final rows = await (database.select(database.transactions)
@@ -165,8 +228,18 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
     for (final r in rows) {
       if (r.categoryId != null) {
-        spendingMap[r.categoryId!] = (spendingMap[r.categoryId!] ?? 0) + r.amountMinorUnits;
-        totalExpenseMinor += r.amountMinorUnits;
+        final convertedMinor = await _convertToReportingCurrency(
+          amountMinor: r.amountMinorUnits,
+          currencyCode: r.currencyCode,
+          originalCurrencyCode: r.originalCurrencyCode,
+          originalAmountMinor: r.originalAmountMinorUnits,
+          exchangeRateScaled: r.exchangeRateScaled,
+          targetCurrency: reportingCurrency,
+        );
+
+        spendingMap[r.categoryId!] =
+            (spendingMap[r.categoryId!] ?? 0) + convertedMinor;
+        totalExpenseMinor += convertedMinor;
       }
     }
 
@@ -174,7 +247,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
     for (final entry in spendingMap.entries) {
       final category = categoryMap[entry.key];
       if (category != null && entry.value > 0) {
-        final amount = Money(entry.value);
+        final amount = Money(entry.value, reportingCurrency);
         final percentage = totalExpenseMinor > 0
             ? (entry.value / totalExpenseMinor) * 100.0
             : 0.0;
@@ -192,7 +265,7 @@ class ReportsRepositoryImpl implements ReportsRepository {
     items.sort((a, b) => b.amount.compareTo(a.amount));
 
     return CategoryBreakdownReport(
-      totalExpense: Money(totalExpenseMinor),
+      totalExpense: Money(totalExpenseMinor, reportingCurrency),
       items: items,
     );
   }
@@ -208,13 +281,20 @@ class ReportsRepositoryImpl implements ReportsRepository {
       customEnd: customEnd,
     );
 
-    // Current net worth is the sum of current balances across all accounts
+    final reportingCurrency = await _getReportingCurrency();
+
+    // Current net worth is the sum of converted current balances across all accounts
     final accountRows = await database.select(database.accounts).get();
     int currentNetWorthMinor = 0;
     for (final acc in accountRows) {
-      currentNetWorthMinor += acc.currentBalanceMinorUnits;
+      final converted = await _convertToReportingCurrency(
+        amountMinor: acc.currentBalanceMinorUnits,
+        currencyCode: acc.currencyCode,
+        targetCurrency: reportingCurrency,
+      );
+      currentNetWorthMinor += converted;
     }
-    final currentNetWorth = Money(currentNetWorthMinor);
+    final currentNetWorth = Money(currentNetWorthMinor, reportingCurrency);
 
     // Fetch transactions strictly after range start to roll balances backward
     final startMs = range.start.toUtc().millisecondsSinceEpoch;
@@ -229,6 +309,30 @@ class ReportsRepositoryImpl implements ReportsRepository {
           ..orderBy([(tbl) => OrderingTerm.asc(tbl.contributionDate)]))
         .get();
 
+    // Pre-convert future movements
+    final convertedTxns = <_ConvertedRow>[];
+    for (final tx in futureTxns) {
+      final converted = await _convertToReportingCurrency(
+        amountMinor: tx.amountMinorUnits,
+        currencyCode: tx.currencyCode,
+        originalCurrencyCode: tx.originalCurrencyCode,
+        originalAmountMinor: tx.originalAmountMinorUnits,
+        exchangeRateScaled: tx.exchangeRateScaled,
+        targetCurrency: reportingCurrency,
+      );
+      convertedTxns.add(_ConvertedRow(tx, converted));
+    }
+
+    final convertedContributions = <_ConvertedContribution>[];
+    for (final gc in futureContributions) {
+      final converted = await _convertToReportingCurrency(
+        amountMinor: gc.amountMinorUnits,
+        currencyCode: gc.currencyCode,
+        targetCurrency: reportingCurrency,
+      );
+      convertedContributions.add(_ConvertedContribution(gc, converted));
+    }
+
     // Generate checkpoints
     final checkpoints = _generateCheckpoints(range);
     final points = <NetWorthDataPoint>[];
@@ -236,30 +340,26 @@ class ReportsRepositoryImpl implements ReportsRepository {
     for (final cp in checkpoints) {
       final cpMs = cp.toUtc().millisecondsSinceEpoch;
 
-      // Net worth at cp = currentNetWorth - movements that occurred strictly AFTER cp
       int nwAtCpMinor = currentNetWorthMinor;
 
       // Reverse transactions after cp
-      for (final tx in futureTxns) {
-        if (tx.transactionDate > cpMs) {
-          if (tx.transactionType == TransactionType.income.name) {
-            nwAtCpMinor -= tx.amountMinorUnits;
-          } else if (tx.transactionType == TransactionType.expense.name) {
-            nwAtCpMinor += tx.amountMinorUnits;
+      for (final ctx in convertedTxns) {
+        if (ctx.row.transactionDate > cpMs) {
+          if (ctx.row.transactionType == TransactionType.income.name) {
+            nwAtCpMinor -= ctx.convertedAmountMinor;
+          } else if (ctx.row.transactionType == TransactionType.expense.name) {
+            nwAtCpMinor += ctx.convertedAmountMinor;
           }
-          // Transfers between accounts have net change 0
         }
       }
 
       // Reverse goal contributions after cp
-      for (final gc in futureContributions) {
-        if (gc.contributionDate > cpMs) {
-          if (gc.contributionType == GoalContributionType.deposit.name) {
-            // Deposit debited account, so before this event net worth was higher
-            nwAtCpMinor += gc.amountMinorUnits;
-          } else if (gc.contributionType == GoalContributionType.withdrawal.name) {
-            // Withdrawal credited account, so before this event net worth was lower
-            nwAtCpMinor -= gc.amountMinorUnits;
+      for (final cgc in convertedContributions) {
+        if (cgc.row.contributionDate > cpMs) {
+          if (cgc.row.contributionType == GoalContributionType.deposit.name) {
+            nwAtCpMinor += cgc.convertedAmountMinor;
+          } else if (cgc.row.contributionType == GoalContributionType.withdrawal.name) {
+            nwAtCpMinor -= cgc.convertedAmountMinor;
           }
         }
       }
@@ -269,14 +369,14 @@ class ReportsRepositoryImpl implements ReportsRepository {
         NetWorthDataPoint(
           date: cp,
           label: label,
-          netWorth: Money(nwAtCpMinor),
+          netWorth: Money(nwAtCpMinor, reportingCurrency),
         ),
       );
     }
 
     final netChange = points.isNotEmpty
         ? points.last.netWorth - points.first.netWorth
-        : Money.zero;
+        : Money(0, reportingCurrency);
 
     return NetWorthTrendReport(
       currentNetWorth: currentNetWorth,
@@ -292,7 +392,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
     final totalDays = end.difference(start).inDays;
 
     if (totalDays <= 31) {
-      // Weekly checkpoints (~5 points)
       var current = start;
       while (!current.isAfter(end)) {
         checkpoints.add(current);
@@ -302,7 +401,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
         checkpoints.add(end);
       }
     } else if (totalDays <= 95) {
-      // Bi-weekly checkpoints (~7 points)
       var current = start;
       while (!current.isAfter(end)) {
         checkpoints.add(current);
@@ -312,7 +410,6 @@ class ReportsRepositoryImpl implements ReportsRepository {
         checkpoints.add(end);
       }
     } else {
-      // Monthly checkpoints (start of each month + end)
       var current = DateTime(start.year, start.month, 1);
       if (current.isBefore(start)) current = start;
 
@@ -327,4 +424,18 @@ class ReportsRepositoryImpl implements ReportsRepository {
 
     return checkpoints;
   }
+}
+
+class _ConvertedRow {
+  final TransactionRow row;
+  final int convertedAmountMinor;
+
+  _ConvertedRow(this.row, this.convertedAmountMinor);
+}
+
+class _ConvertedContribution {
+  final GoalContributionRow row;
+  final int convertedAmountMinor;
+
+  _ConvertedContribution(this.row, this.convertedAmountMinor);
 }

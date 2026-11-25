@@ -5,10 +5,12 @@ import 'package:my_budget_tracker/features/accounts/data/repositories/account_re
 import 'package:my_budget_tracker/features/accounts/domain/entities/account.dart';
 import 'package:my_budget_tracker/features/categories/data/repositories/category_repository_impl.dart';
 import 'package:my_budget_tracker/features/categories/domain/entities/category.dart';
+import 'package:my_budget_tracker/features/currency/data/repositories/currency_repository_impl.dart';
 import 'package:my_budget_tracker/features/reports/data/repositories/reports_repository_impl.dart';
 import 'package:my_budget_tracker/features/reports/domain/entities/reports_timeframe.dart';
 import 'package:my_budget_tracker/features/transactions/data/repositories/transaction_repository_impl.dart';
 import 'package:my_budget_tracker/features/transactions/domain/entities/transaction.dart';
+import '../../../../helpers/fake_flutter_secure_storage.dart';
 
 void main() {
   group('ReportsRepositoryImpl Unit & Integration Tests', () {
@@ -16,6 +18,7 @@ void main() {
     late AccountRepositoryImpl accountRepository;
     late CategoryRepositoryImpl categoryRepository;
     late TransactionRepositoryImpl transactionRepository;
+    late CurrencyRepositoryImpl currencyRepository;
     late ReportsRepositoryImpl reportsRepository;
 
     late Account checkingAccount;
@@ -31,7 +34,11 @@ void main() {
       accountRepository = AccountRepositoryImpl(database);
       categoryRepository = CategoryRepositoryImpl(database);
       transactionRepository = TransactionRepositoryImpl(database);
-      reportsRepository = ReportsRepositoryImpl(database);
+      currencyRepository = CurrencyRepositoryImpl(
+        database: database,
+        secureStorage: createInMemorySecureStorage(),
+      );
+      reportsRepository = ReportsRepositoryImpl(database, currencyRepository: currencyRepository);
 
       checkingAccount = Account(
         id: 'acc-check',
@@ -328,6 +335,169 @@ void main() {
         );
 
         expect(report.totalIncome, const Money(30000)); // 10000 + 20000, outside 50000 excluded
+      });
+    });
+
+    group('Multi-Currency Reporting Consolidation', () {
+      test('aggregates cash flow with multi-currency income and expenses converted to primary currency', () async {
+        // 1. Create LKR account with native currency
+        final lkrAccount = Account(
+          id: 'acc-lkr',
+          name: 'LKR Account',
+          type: AccountType.checking,
+          currencyCode: 'LKR',
+          initialBalance: const Money(10000000, 'LKR'), // Rs 100,000.00
+          currentBalance: const Money(10000000, 'LKR'),
+          isArchived: false,
+          icon: 'payments',
+          color: 0xFF10B981,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(lkrAccount);
+
+        // 2. Income on USD account: $1,000 USD (100000)
+        await transactionRepository.createTransaction(
+          Transaction(
+            id: 'tx-usd-inc',
+            accountId: checkingAccount.id,
+            type: TransactionType.income,
+            amount: const Money(100000, 'USD'),
+            categoryId: salaryCategory.id,
+            date: DateTime.utc(2026, 5, 5),
+            createdAt: DateTime.utc(2026, 5, 5),
+          ),
+        );
+
+        // 3. Income on LKR account: Rs 300,000.00 LKR (30000000 cents).
+        // Seeded rate: LKR -> USD is 333333 (~0.00333333), converts to $1,000.00 USD (100000 cents)
+        await transactionRepository.createTransaction(
+          Transaction(
+            id: 'tx-lkr-inc',
+            accountId: lkrAccount.id,
+            type: TransactionType.income,
+            amount: const Money(30000000, 'LKR'),
+            categoryId: salaryCategory.id,
+            date: DateTime.utc(2026, 5, 10),
+            createdAt: DateTime.utc(2026, 5, 10),
+          ),
+        );
+
+        // 4. Expense on USD account with foreign EUR expenditure: €50 EUR (settled as $55.00 USD)
+        await transactionRepository.createTransaction(
+          Transaction(
+            id: 'tx-usd-exp-foreign',
+            accountId: checkingAccount.id,
+            type: TransactionType.expense,
+            amount: const Money(5500, 'USD'),
+            originalAmount: const Money(5000, 'EUR'),
+            exchangeRateScaled: 110000000,
+            categoryId: groceriesCategory.id,
+            date: DateTime.utc(2026, 5, 15),
+            createdAt: DateTime.utc(2026, 5, 15),
+          ),
+        );
+
+        final report = await reportsRepository.getCashFlowReport(
+          ReportsTimeframe.custom,
+          customStart: DateTime(2026, 5, 1),
+          customEnd: DateTime(2026, 5, 31),
+        );
+
+        // Total Income: $1,000 USD + $1,000 USD (from LKR) = $2,000 USD (200000)
+        expect(report.totalIncome.currencyCode, 'USD');
+        expect(report.totalIncome.minorUnits, 200000);
+
+        // Total Expense: $55.00 USD (5500)
+        expect(report.totalExpense.currencyCode, 'USD');
+        expect(report.totalExpense.minorUnits, 5500);
+
+        // Net Cash Flow: $2,000.00 - $55.00 = $1,945.00 USD (194500)
+        expect(report.netCashFlow.currencyCode, 'USD');
+        expect(report.netCashFlow.minorUnits, 194500);
+      });
+
+      test('consolidates category breakdown in primary reporting currency across diverse account currencies', () async {
+        final eurAccount = Account(
+          id: 'acc-eur-report',
+          name: 'EUR Travel',
+          type: AccountType.checking,
+          currencyCode: 'EUR',
+          initialBalance: const Money(100000, 'EUR'),
+          currentBalance: const Money(100000, 'EUR'),
+          isArchived: false,
+          icon: 'euro',
+          color: 0xFF3B82F6,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(eurAccount);
+
+        // Groceries expense in USD: $40.00 USD
+        await transactionRepository.createTransaction(
+          Transaction(
+            id: 'tx-exp-usd',
+            accountId: checkingAccount.id,
+            type: TransactionType.expense,
+            amount: const Money(4000, 'USD'),
+            categoryId: groceriesCategory.id,
+            date: DateTime.utc(2026, 5, 10),
+            createdAt: DateTime.utc(2026, 5, 10),
+          ),
+        );
+
+        // Groceries expense in EUR: €50.00 EUR (5000 cents).
+        // Rate: EUR -> USD is 108695652, converts to $54.35 USD (5435 cents)
+        await transactionRepository.createTransaction(
+          Transaction(
+            id: 'tx-exp-eur',
+            accountId: eurAccount.id,
+            type: TransactionType.expense,
+            amount: const Money(5000, 'EUR'),
+            categoryId: groceriesCategory.id,
+            date: DateTime.utc(2026, 5, 12),
+            createdAt: DateTime.utc(2026, 5, 12),
+          ),
+        );
+
+        final report = await reportsRepository.getCategoryBreakdownReport(
+          ReportsTimeframe.custom,
+          customStart: DateTime(2026, 5, 1),
+          customEnd: DateTime(2026, 5, 31),
+        );
+
+        expect(report.totalExpense.currencyCode, 'USD');
+        // Total: 4000 + 5435 = 9435 cents ($94.35 USD)
+        expect(report.totalExpense.minorUnits, 9435);
+        expect(report.items.length, 1);
+        expect(report.items.first.category.id, groceriesCategory.id);
+        expect(report.items.first.amount.currencyCode, 'USD');
+        expect(report.items.first.amount.minorUnits, 9435);
+      });
+
+      test('consolidates net worth trend converting multi-currency account balances', () async {
+        // Checking: $1,000 USD (100000)
+        // Savings: $2,000 USD (200000)
+        // EUR Account: €1,000 EUR (100000 cents) -> at 1.08695652 converts to $1,086.96 USD (108696 cents)
+        final eurAccount = Account(
+          id: 'acc-eur-nw',
+          name: 'EUR Savings',
+          type: AccountType.savings,
+          currencyCode: 'EUR',
+          initialBalance: const Money(100000, 'EUR'),
+          currentBalance: const Money(100000, 'EUR'),
+          isArchived: false,
+          icon: 'euro',
+          color: 0xFF3B82F6,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(eurAccount);
+
+        final report = await reportsRepository.getNetWorthTrendReport(
+          ReportsTimeframe.thisMonth,
+        );
+
+        expect(report.currentNetWorth.currencyCode, 'USD');
+        // Total: 100000 + 200000 + 108696 = 408696 cents ($4,086.96 USD)
+        expect(report.currentNetWorth.minorUnits, 408696);
       });
     });
   });

@@ -7,8 +7,10 @@ import 'package:my_budget_tracker/features/accounts/domain/entities/account.dart
 import 'package:my_budget_tracker/features/accounts/domain/repositories/account_repository.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_cubit.dart';
 import 'package:my_budget_tracker/features/accounts/presentation/cubit/accounts_state.dart';
+import 'package:my_budget_tracker/features/currency/domain/repositories/currency_repository.dart';
 
 class MockAccountRepository extends Mock implements AccountRepository {}
+class MockCurrencyRepository extends Mock implements CurrencyRepository {}
 
 void main() {
   group('AccountsCubit Unit Tests', () {
@@ -104,6 +106,45 @@ void main() {
           totalBalance: const Money(30000),
           includeArchived: false,
           errorMessage: 'Cannot delete an account with existing transactions. Archive it instead.',
+        ),
+      ],
+    );
+
+    blocTest<AccountsCubit, AccountsState>(
+      'converts multi-currency accounts to primary reporting currency using CurrencyRepository',
+      build: () {
+        final mockCurrencyRepo = MockCurrencyRepository();
+        when(() => mockCurrencyRepo.getPrimaryReportingCurrency())
+            .thenAnswer((_) async => 'USD');
+        when(() => mockCurrencyRepo.watchPrimaryReportingCurrency())
+            .thenAnswer((_) => Stream.value('USD'));
+        when(() => mockCurrencyRepo.convertAmount(
+              amount: const Money(10000, 'EUR'),
+              targetCurrency: 'USD',
+            )).thenAnswer((_) async => const Money(10870, 'USD'));
+
+        final usdAccount = testAccount1.copyWith(
+          currencyCode: 'USD',
+          currentBalance: const Money(10000, 'USD'), // $100.00
+        );
+        final eurAccount = testAccount2.copyWith(
+          currencyCode: 'EUR',
+          currentBalance: const Money(10000, 'EUR'), // €100.00 -> $108.70 USD
+        );
+
+        when(() => repository.watchAccounts(includeArchived: false))
+            .thenAnswer((_) => Stream.value([usdAccount, eurAccount]));
+
+        return AccountsCubit(repository, currencyRepository: mockCurrencyRepo);
+      },
+      act: (cubit) => cubit.loadAccounts(),
+      expect: () => [
+        const AccountsLoading(),
+        isA<AccountsLoaded>().having(
+          (s) => s.totalBalance,
+          'totalBalance',
+          // Converted total: $100.00 + $108.70 = $208.70 USD (20870)
+          const Money(20870, 'USD'),
         ),
       ],
     );

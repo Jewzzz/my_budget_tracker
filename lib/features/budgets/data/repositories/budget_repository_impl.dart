@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../categories/domain/entities/category.dart';
+import '../../../currency/domain/repositories/currency_repository.dart';
 import '../../../transactions/domain/entities/transaction.dart';
 import '../../domain/entities/budget.dart';
 import '../../domain/entities/category_budget_overview.dart';
@@ -9,8 +10,9 @@ import '../../domain/repositories/budget_repository.dart';
 
 class BudgetRepositoryImpl implements BudgetRepository {
   final AppDatabase database;
+  final CurrencyRepository? currencyRepository;
 
-  BudgetRepositoryImpl(this.database);
+  BudgetRepositoryImpl(this.database, {this.currencyRepository});
 
   @override
   Future<void> setBudget(Budget budget) async {
@@ -25,6 +27,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       await (database.update(database.budgets)..where((tbl) => tbl.id.equals(existing.id))).write(
         BudgetsCompanion(
           limitMinorUnits: Value(budget.limitAmount.minorUnits),
+          currencyCode: Value(budget.limitAmount.currencyCode),
         ),
       );
     } else {
@@ -35,6 +38,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
               year: budget.year,
               month: budget.month,
               limitMinorUnits: budget.limitAmount.minorUnits,
+              currencyCode: Value(budget.limitAmount.currencyCode),
             ),
           );
     }
@@ -89,13 +93,6 @@ class BudgetRepositoryImpl implements BudgetRepository {
               tbl.transactionDate.isSmallerOrEqualValue(endMillis)))
         .get();
 
-    final Map<String, int> spentMap = {};
-    for (final exp in expenseRows) {
-      if (exp.categoryId != null) {
-        spentMap[exp.categoryId!] = (spentMap[exp.categoryId!] ?? 0) + exp.amountMinorUnits;
-      }
-    }
-
     final List<CategoryBudgetOverview> overviews = [];
     for (final bRow in budgetRows) {
       final catRow = categoryMap[bRow.categoryId];
@@ -110,13 +107,41 @@ class BudgetRepositoryImpl implements BudgetRepository {
         isDefault: catRow.isDefault,
       );
 
-      final spentMinorUnits = spentMap[bRow.categoryId] ?? 0;
+      final budgetCurrency = bRow.currencyCode.toUpperCase();
+      int spentMinorUnits = 0;
+
+      for (final exp in expenseRows) {
+        if (exp.categoryId == bRow.categoryId) {
+          final expCurrency = exp.currencyCode.toUpperCase();
+          if (expCurrency == budgetCurrency) {
+            spentMinorUnits += exp.amountMinorUnits;
+          } else if (exp.originalCurrencyCode?.toUpperCase() == budgetCurrency &&
+              exp.originalAmountMinorUnits != null) {
+            spentMinorUnits += exp.originalAmountMinorUnits!;
+          } else if (currencyRepository != null) {
+            final converted = await currencyRepository!.convertAmount(
+              amount: Money(exp.amountMinorUnits, exp.currencyCode),
+              targetCurrency: budgetCurrency,
+            );
+            spentMinorUnits += converted.minorUnits;
+          } else if (exp.exchangeRateScaled != null && exp.exchangeRateScaled! > 0) {
+            final converted = Money.convert(
+              from: Money(exp.amountMinorUnits, exp.currencyCode),
+              toCurrency: budgetCurrency,
+              rateScaled: exp.exchangeRateScaled!,
+            );
+            spentMinorUnits += converted.minorUnits;
+          } else {
+            spentMinorUnits += exp.amountMinorUnits;
+          }
+        }
+      }
 
       overviews.add(
         CategoryBudgetOverview(
           budget: _toEntity(bRow),
           category: category,
-          spentAmount: Money(spentMinorUnits),
+          spentAmount: Money(spentMinorUnits, bRow.currencyCode),
         ),
       );
     }
@@ -133,6 +158,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       database.budgets,
       database.transactions,
       database.categories,
+      database.exchangeRates,
     ]);
     await for (final _ in database.tableUpdates(updateQuery)) {
       yield await getBudgetOverviews(year, month);
@@ -145,7 +171,7 @@ class BudgetRepositoryImpl implements BudgetRepository {
       categoryId: row.categoryId,
       year: row.year,
       month: row.month,
-      limitAmount: Money(row.limitMinorUnits),
+      limitAmount: Money(row.limitMinorUnits, row.currencyCode),
     );
   }
 }

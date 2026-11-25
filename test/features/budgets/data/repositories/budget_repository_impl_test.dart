@@ -7,8 +7,10 @@ import 'package:my_budget_tracker/features/budgets/data/repositories/budget_repo
 import 'package:my_budget_tracker/features/budgets/domain/entities/budget.dart';
 import 'package:my_budget_tracker/features/categories/data/repositories/category_repository_impl.dart';
 import 'package:my_budget_tracker/features/categories/domain/entities/category.dart';
+import 'package:my_budget_tracker/features/currency/data/repositories/currency_repository_impl.dart';
 import 'package:my_budget_tracker/features/transactions/data/repositories/transaction_repository_impl.dart';
 import 'package:my_budget_tracker/features/transactions/domain/entities/transaction.dart';
+import '../../../../helpers/fake_flutter_secure_storage.dart';
 
 void main() {
   group('BudgetRepositoryImpl Integration Tests', () {
@@ -16,6 +18,7 @@ void main() {
     late CategoryRepositoryImpl categoryRepository;
     late AccountRepositoryImpl accountRepository;
     late TransactionRepositoryImpl transactionRepository;
+    late CurrencyRepositoryImpl currencyRepository;
     late BudgetRepositoryImpl budgetRepository;
 
     late Category groceriesCategory;
@@ -27,7 +30,11 @@ void main() {
       categoryRepository = CategoryRepositoryImpl(database);
       accountRepository = AccountRepositoryImpl(database);
       transactionRepository = TransactionRepositoryImpl(database);
-      budgetRepository = BudgetRepositoryImpl(database);
+      currencyRepository = CurrencyRepositoryImpl(
+        database: database,
+        secureStorage: createInMemorySecureStorage(),
+      );
+      budgetRepository = BudgetRepositoryImpl(database, currencyRepository: currencyRepository);
 
       final categories = await categoryRepository.getCategories(type: CategoryType.expense);
       groceriesCategory = categories.firstWhere((c) => c.name == 'Groceries');
@@ -361,6 +368,74 @@ void main() {
       expect(overviews.length, 1);
       expect(overviews.first.category.id, groceriesCategory.id);
       expect(overviews.first.budget.limitAmount, const Money(50000));
+    });
+
+    test('multi-currency budgeting: converts foreign expenses and accumulates to budget', () async {
+      // 1. Budget of $100.00 USD for Groceries
+      await budgetRepository.setBudget(
+        Budget(
+          id: 'b-groc-multi',
+          categoryId: groceriesCategory.id,
+          year: 2026,
+          month: 5,
+          limitAmount: const Money(10000, 'USD'),
+        ),
+      );
+
+      // 2. Foreign currency expense: €50 EUR (5000 cents) settled as $55.00 USD (5500 cents) on USD account
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-eur-exp',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(5500, 'USD'), // Settled in USD
+          originalAmount: const Money(5000, 'EUR'), // Foreign €50.00
+          exchangeRateScaled: 110000000, // 1.10 rate
+          categoryId: groceriesCategory.id,
+          date: DateTime.utc(2026, 5, 10),
+          createdAt: DateTime.utc(2026, 5, 10),
+        ),
+      );
+
+      // 3. Foreign currency expense on EUR account: €20 EUR (2000 cents)
+      final eurAccount = Account(
+        id: 'acc-eur',
+        name: 'Euro Travel',
+        type: AccountType.checking,
+        currencyCode: 'EUR',
+        initialBalance: const Money(50000, 'EUR'), // €500.00
+        currentBalance: const Money(50000, 'EUR'),
+        isArchived: false,
+        icon: 'euro',
+        color: 0xFF2563EB,
+        createdAt: DateTime.utc(2026, 1, 1),
+      );
+      await accountRepository.createAccount(eurAccount);
+
+      // Seed rate: EUR -> USD: 108695652 (~1.086956)
+      // €20.00 EUR -> USD at 1.086956: 2000 * 108695652 * 100 ~/ (10^8 * 100) = 2174 cents ($21.74)
+      await transactionRepository.createTransaction(
+        Transaction(
+          id: 'txn-eur-direct',
+          accountId: eurAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(2000, 'EUR'), // Settled in EUR
+          categoryId: groceriesCategory.id,
+          date: DateTime.utc(2026, 5, 15),
+          createdAt: DateTime.utc(2026, 5, 15),
+        ),
+      );
+
+      final overviews = await budgetRepository.getBudgetOverviews(2026, 5);
+      expect(overviews.length, 1);
+      final overview = overviews.first;
+
+      // Spent: $55.00 + $21.74 = $76.74 (7674 cents)
+      expect(overview.spentAmount.currencyCode, 'USD');
+      expect(overview.spentAmount.minorUnits, 7674);
+      expect(overview.remainingAmount.currencyCode, 'USD');
+      expect(overview.remainingAmount.minorUnits, 2326); // $100.00 - $76.74 = $23.26
+      expect(overview.isOverBudget, isFalse);
     });
   });
 }
