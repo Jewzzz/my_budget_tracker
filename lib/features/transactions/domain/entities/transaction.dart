@@ -30,7 +30,9 @@ class Transaction extends Equatable {
   final String id;
   final String accountId;
   final TransactionType type;
-  final Money amount;
+  final Money amount; // Settlement amount in account's native currency
+  final Money? originalAmount; // Optional original amount in foreign currency
+  final int? exchangeRateScaled; // Optional exchange rate multiplied by 10^8
   final String? categoryId;
   final String? destinationAccountId;
   final DateTime date;
@@ -42,6 +44,8 @@ class Transaction extends Equatable {
     required this.accountId,
     required this.type,
     required this.amount,
+    this.originalAmount,
+    this.exchangeRateScaled,
     this.categoryId,
     this.destinationAccountId,
     required this.date,
@@ -64,6 +68,7 @@ class Transaction extends Equatable {
     }
   }
 
+  String get currencyCode => amount.currencyCode;
   bool get isExpense => type == TransactionType.expense;
   bool get isIncome => type == TransactionType.income;
   bool get isTransfer => type == TransactionType.transfer;
@@ -73,6 +78,8 @@ class Transaction extends Equatable {
     String? accountId,
     TransactionType? type,
     Money? amount,
+    Money? originalAmount,
+    int? exchangeRateScaled,
     String? categoryId,
     String? destinationAccountId,
     DateTime? date,
@@ -84,6 +91,8 @@ class Transaction extends Equatable {
       accountId: accountId ?? this.accountId,
       type: type ?? this.type,
       amount: amount ?? this.amount,
+      originalAmount: originalAmount ?? this.originalAmount,
+      exchangeRateScaled: exchangeRateScaled ?? this.exchangeRateScaled,
       categoryId: categoryId ?? this.categoryId,
       destinationAccountId: destinationAccountId ?? this.destinationAccountId,
       date: date ?? this.date,
@@ -98,6 +107,8 @@ class Transaction extends Equatable {
         accountId,
         type,
         amount,
+        originalAmount,
+        exchangeRateScaled,
         categoryId,
         destinationAccountId,
         date,

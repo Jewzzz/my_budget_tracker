@@ -34,7 +34,9 @@ class DayGroupedTransactions extends Equatable {
       });
 
       int netMinorUnits = 0;
+      String? firstCurrency;
       for (final txn in dayTxns) {
+        firstCurrency ??= txn.amount.currencyCode;
         if (txn.type == TransactionType.income) {
           netMinorUnits += txn.amount.minorUnits;
         } else if (txn.type == TransactionType.expense) {
@@ -45,7 +47,7 @@ class DayGroupedTransactions extends Equatable {
       return DayGroupedTransactions(
         date: day,
         transactions: dayTxns,
-        netTotal: Money(netMinorUnits),
+        netTotal: Money(netMinorUnits, firstCurrency ?? Money.defaultCurrency),
       );
     }).toList();
   }

@@ -453,5 +453,119 @@ void main() {
         expect(acc2!.currentBalance, const Money(40000));
       });
     });
+
+    group('Multi-Currency & Normalized Date Operations', () {
+      test('executes cross-currency transfer debiting source in USD and crediting destination in LKR', () async {
+        final lkrAccount = Account(
+          id: 'acc-lkr-dest',
+          name: 'Commercial Bank LKR',
+          type: AccountType.savings,
+          currencyCode: 'LKR',
+          initialBalance: const Money(5000000, 'LKR'), // Rs 50,000.00
+          currentBalance: const Money(5000000, 'LKR'),
+          isArchived: false,
+          icon: 'savings',
+          color: 0xFF10B981,
+          createdAt: DateTime.utc(2026, 1, 1),
+        );
+        await accountRepository.createAccount(lkrAccount);
+
+        // Transfer $100.00 USD to LKR at rate 300.0 (30,000,000,000 scaled) -> Rs 30,000.00 LKR
+        final xTransfer = Transaction(
+          id: 'txn-xtransfer-1',
+          accountId: testAccount.id, // USD
+          type: TransactionType.transfer,
+          amount: const Money(10000, 'USD'), // $100.00
+          originalAmount: const Money(3000000, 'LKR'), // Rs 30,000.00
+          exchangeRateScaled: 30000000000,
+          destinationAccountId: lkrAccount.id,
+          date: DateTime(2026, 5, 10, 15, 30),
+          note: 'Remittance to LKR account',
+          createdAt: DateTime.utc(2026, 5, 10, 15, 30),
+        );
+
+        await transactionRepository.createTransaction(xTransfer);
+
+        final updatedUsd = await accountRepository.getAccountById(testAccount.id);
+        final updatedLkr = await accountRepository.getAccountById(lkrAccount.id);
+
+        // USD debited: $1000.00 - $100.00 = $900.00 (90000)
+        expect(updatedUsd!.currentBalance, const Money(90000, 'USD'));
+        // LKR credited: Rs 50,000.00 + Rs 30,000.00 = Rs 80,000.00 (8000000)
+        expect(updatedLkr!.currentBalance, const Money(8000000, 'LKR'));
+
+        final retrieved = await transactionRepository.getTransactionById(xTransfer.id);
+        expect(retrieved, isNotNull);
+        expect(retrieved!.amount, const Money(10000, 'USD'));
+        expect(retrieved.originalAmount, const Money(3000000, 'LKR'));
+        expect(retrieved.exchangeRateScaled, 30000000000);
+        // Date normalized to UTC calendar date
+        expect(retrieved.date, DateTime.utc(2026, 5, 10));
+
+        // Now delete the transfer and verify clean restoration
+        await transactionRepository.deleteTransaction(xTransfer.id);
+
+        final restoredUsd = await accountRepository.getAccountById(testAccount.id);
+        final restoredLkr = await accountRepository.getAccountById(lkrAccount.id);
+        expect(restoredUsd!.currentBalance, const Money(100000, 'USD'));
+        expect(restoredLkr!.currentBalance, const Money(5000000, 'LKR'));
+      });
+
+      test('records foreign currency expense debiting settlement amount from account', () async {
+        final expenseCategories = await categoryRepository.getCategories(type: CategoryType.expense);
+        final dining = expenseCategories.firstWhere((c) => c.name == 'Dining');
+
+        // Meal in Tokyo: 15,000 JPY (0 decimals -> 15000 minor units)
+        // Settlement in USD: $100.00 (10000 minor units)
+        final foreignExpense = Transaction(
+          id: 'txn-foreign-exp',
+          accountId: testAccount.id, // USD
+          type: TransactionType.expense,
+          amount: const Money(10000, 'USD'), // $100.00 settlement
+          originalAmount: const Money(15000, 'JPY'), // ¥15,000
+          exchangeRateScaled: 15000000000,
+          categoryId: dining.id,
+          date: DateTime(2026, 6, 15, 20, 0),
+          note: 'Tokyo dinner',
+          createdAt: DateTime.utc(2026, 6, 15, 11, 0),
+        );
+
+        await transactionRepository.createTransaction(foreignExpense);
+
+        final updatedAccount = await accountRepository.getAccountById(testAccount.id);
+        // $1000.00 - $100.00 = $900.00 (90000)
+        expect(updatedAccount!.currentBalance, const Money(90000, 'USD'));
+
+        final retrieved = await transactionRepository.getTransactionById(foreignExpense.id);
+        expect(retrieved!.amount, const Money(10000, 'USD'));
+        expect(retrieved.originalAmount, const Money(15000, 'JPY'));
+        expect(retrieved.exchangeRateScaled, 15000000000);
+        expect(retrieved.date, DateTime.utc(2026, 6, 15));
+      });
+
+      test('normalizes transaction dates to UTC calendar date preventing timezone shift', () async {
+        final expenseCategories = await categoryRepository.getCategories(type: CategoryType.expense);
+        // Create transaction with local late evening time: 23:45
+        final lateNightTx = Transaction(
+          id: 'txn-late-night',
+          accountId: testAccount.id,
+          type: TransactionType.expense,
+          amount: const Money(2000, 'USD'),
+          categoryId: expenseCategories.first.id,
+          date: DateTime(2026, 7, 20, 23, 45),
+          createdAt: DateTime.utc(2026, 7, 20, 18, 15),
+        );
+
+        await transactionRepository.createTransaction(lateNightTx);
+
+        final retrieved = await transactionRepository.getTransactionById(lateNightTx.id);
+        expect(retrieved!.date.year, 2026);
+        expect(retrieved.date.month, 7);
+        expect(retrieved.date.day, 20);
+        expect(retrieved.date.hour, 0);
+        expect(retrieved.date.minute, 0);
+        expect(retrieved.date.isUtc, isTrue);
+      });
+    });
   });
 }

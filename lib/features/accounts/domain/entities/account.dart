@@ -32,6 +32,7 @@ class Account extends Equatable {
   final String id;
   final String name;
   final AccountType type;
+  final String currencyCode;
   final Money initialBalance;
   final Money currentBalance;
   final bool isArchived;
@@ -43,6 +44,7 @@ class Account extends Equatable {
     required this.id,
     required this.name,
     required this.type,
+    this.currencyCode = Money.defaultCurrency,
     required this.initialBalance,
     required this.currentBalance,
     this.isArchived = false,
@@ -64,6 +66,7 @@ class Account extends Equatable {
     String? id,
     String? name,
     AccountType? type,
+    String? currencyCode,
     Money? initialBalance,
     Money? currentBalance,
     bool? isArchived,
@@ -75,6 +78,7 @@ class Account extends Equatable {
       id: id ?? this.id,
       name: name ?? this.name,
       type: type ?? this.type,
+      currencyCode: currencyCode ?? this.currencyCode,
       initialBalance: initialBalance ?? this.initialBalance,
       currentBalance: currentBalance ?? this.currentBalance,
       isArchived: isArchived ?? this.isArchived,
@@ -89,6 +93,7 @@ class Account extends Equatable {
         id,
         name,
         type,
+        currencyCode,
         initialBalance,
         currentBalance,
         isArchived,

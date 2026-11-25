@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/error/failures.dart';
+import '../../../../core/temporal/date_normalizer.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../domain/entities/transaction.dart';
@@ -17,15 +18,21 @@ class TransactionRepositoryImpl implements TransactionRepository {
       await database.transaction(() async {
         await _applyTransactionBalances(transaction);
 
+        final normalizedDate = DateNormalizer.toUtcCalendarDate(transaction.date);
+
         await database.into(database.transactions).insert(
               TransactionsCompanion.insert(
                 id: transaction.id,
                 accountId: transaction.accountId,
                 transactionType: transaction.type.name,
                 amountMinorUnits: transaction.amount.minorUnits,
+                currencyCode: Value(transaction.currencyCode),
+                originalAmountMinorUnits: Value(transaction.originalAmount?.minorUnits),
+                originalCurrencyCode: Value(transaction.originalAmount?.currencyCode),
+                exchangeRateScaled: Value(transaction.exchangeRateScaled),
                 categoryId: Value(transaction.categoryId),
                 destinationAccountId: Value(transaction.destinationAccountId),
-                transactionDate: transaction.date.millisecondsSinceEpoch,
+                transactionDate: normalizedDate.millisecondsSinceEpoch,
                 note: Value(transaction.note),
                 createdAt: transaction.createdAt.millisecondsSinceEpoch,
               ),
@@ -59,6 +66,7 @@ class TransactionRepositoryImpl implements TransactionRepository {
         await _applyTransactionBalances(transaction);
 
         // 3. Update transaction row
+        final normalizedDate = DateNormalizer.toUtcCalendarDate(transaction.date);
         await (database.update(database.transactions)
               ..where((tbl) => tbl.id.equals(transaction.id)))
             .write(
@@ -66,9 +74,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
             accountId: Value(transaction.accountId),
             transactionType: Value(transaction.type.name),
             amountMinorUnits: Value(transaction.amount.minorUnits),
+            currencyCode: Value(transaction.currencyCode),
+            originalAmountMinorUnits: Value(transaction.originalAmount?.minorUnits),
+            originalCurrencyCode: Value(transaction.originalAmount?.currencyCode),
+            exchangeRateScaled: Value(transaction.exchangeRateScaled),
             categoryId: Value(transaction.categoryId),
             destinationAccountId: Value(transaction.destinationAccountId),
-            transactionDate: Value(transaction.date.millisecondsSinceEpoch),
+            transactionDate: Value(normalizedDate.millisecondsSinceEpoch),
             note: Value(transaction.note),
           ),
         );
@@ -126,12 +138,13 @@ class TransactionRepositoryImpl implements TransactionRepository {
               ..where((tbl) => tbl.id.equals(txRow.destinationAccountId!)))
             .getSingleOrNull();
         if (destRow != null) {
+          final destDeductMinor = _calculateDestinationTransferRevert(txRow, accountRow, destRow);
           await (database.update(database.accounts)
                 ..where((tbl) => tbl.id.equals(destRow.id)))
               .write(
             AccountsCompanion(
               currentBalanceMinorUnits:
-                  Value(destRow.currentBalanceMinorUnits - txRow.amountMinorUnits),
+                  Value(destRow.currentBalanceMinorUnits - destDeductMinor),
             ),
           );
         }
@@ -145,6 +158,52 @@ class TransactionRepositoryImpl implements TransactionRepository {
         currentBalanceMinorUnits: Value(revertedBalance),
       ),
     );
+  }
+
+  int _calculateDestinationTransferRevert(
+    TransactionRow txRow,
+    AccountRow sourceAccount,
+    AccountRow destAccount,
+  ) {
+    if (destAccount.currencyCode.toUpperCase() == sourceAccount.currencyCode.toUpperCase()) {
+      return txRow.amountMinorUnits;
+    }
+    if (txRow.originalAmountMinorUnits != null &&
+        txRow.originalCurrencyCode?.toUpperCase() == destAccount.currencyCode.toUpperCase()) {
+      return txRow.originalAmountMinorUnits!;
+    }
+    if (txRow.exchangeRateScaled != null) {
+      final converted = Money.convert(
+        from: Money(txRow.amountMinorUnits, txRow.currencyCode),
+        toCurrency: destAccount.currencyCode,
+        rateScaled: txRow.exchangeRateScaled!,
+      );
+      return converted.minorUnits;
+    }
+    return txRow.amountMinorUnits;
+  }
+
+  int _calculateDestinationTransferCredit(
+    Transaction transaction,
+    AccountRow sourceAccount,
+    AccountRow destAccount,
+  ) {
+    if (destAccount.currencyCode.toUpperCase() == sourceAccount.currencyCode.toUpperCase()) {
+      return transaction.amount.minorUnits;
+    }
+    if (transaction.originalAmount != null &&
+        transaction.originalAmount!.currencyCode.toUpperCase() == destAccount.currencyCode.toUpperCase()) {
+      return transaction.originalAmount!.minorUnits;
+    }
+    if (transaction.exchangeRateScaled != null) {
+      final converted = Money.convert(
+        from: transaction.amount,
+        toCurrency: destAccount.currencyCode,
+        rateScaled: transaction.exchangeRateScaled!,
+      );
+      return converted.minorUnits;
+    }
+    return transaction.amount.minorUnits;
   }
 
   Future<void> _applyTransactionBalances(Transaction transaction) async {
@@ -185,13 +244,14 @@ class TransactionRepositoryImpl implements TransactionRepository {
       newBalanceMinorUnits += transaction.amount.minorUnits;
     } else if (transaction.type == TransactionType.transfer && destAccount != null) {
       final targetDest = destAccount;
+      final destCreditMinor = _calculateDestinationTransferCredit(transaction, accountRow, targetDest);
       newBalanceMinorUnits -= transaction.amount.minorUnits;
       await (database.update(database.accounts)
             ..where((tbl) => tbl.id.equals(targetDest.id)))
           .write(
         AccountsCompanion(
           currentBalanceMinorUnits:
-              Value(targetDest.currentBalanceMinorUnits + transaction.amount.minorUnits),
+              Value(targetDest.currentBalanceMinorUnits + destCreditMinor),
         ),
       );
     }
@@ -257,14 +317,22 @@ class TransactionRepositoryImpl implements TransactionRepository {
   }
 
   Transaction _toEntity(TransactionRow row) {
+    final rawDate = DateTime.fromMillisecondsSinceEpoch(row.transactionDate, isUtc: true);
+    final normalizedDate = DateNormalizer.toUtcCalendarDate(rawDate);
+    final originalAmount = row.originalAmountMinorUnits != null && row.originalCurrencyCode != null
+        ? Money(row.originalAmountMinorUnits!, row.originalCurrencyCode!)
+        : null;
+
     return Transaction(
       id: row.id,
       accountId: row.accountId,
       type: TransactionType.fromString(row.transactionType),
-      amount: Money(row.amountMinorUnits),
+      amount: Money(row.amountMinorUnits, row.currencyCode),
+      originalAmount: originalAmount,
+      exchangeRateScaled: row.exchangeRateScaled,
       categoryId: row.categoryId,
       destinationAccountId: row.destinationAccountId,
-      date: DateTime.fromMillisecondsSinceEpoch(row.transactionDate, isUtc: true),
+      date: normalizedDate,
       note: row.note,
       createdAt: DateTime.fromMillisecondsSinceEpoch(row.createdAt, isUtc: true),
     );
