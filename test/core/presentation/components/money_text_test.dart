@@ -58,5 +58,26 @@ void main() {
       expect(textWidget.data, '-\$85.00');
       expect(textWidget.style?.color, AppColors.expense);
     });
+
+    testWidgets('formats diverse ISO 4217 currencies with correct symbols and fractional digits', (tester) async {
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: const Scaffold(
+            body: Column(
+              children: [
+                MoneyText(amount: Money(15000, 'EUR')),
+                MoneyText(amount: Money(15000, 'JPY')),
+                MoneyText(amount: Money(1500, 'KWD')),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('€150.00'), findsOneWidget);
+      expect(find.text('¥15,000'), findsOneWidget);
+      expect(find.text('KD1.500'), findsOneWidget);
+    });
   });
 }

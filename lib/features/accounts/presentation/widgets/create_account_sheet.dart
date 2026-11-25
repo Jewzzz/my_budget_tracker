@@ -4,7 +4,9 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/value_objects/iso_currency.dart';
 import '../../../../core/value_objects/money.dart';
+import '../../../currency/presentation/cubit/currency_cubit.dart';
 import '../../domain/entities/account.dart';
 import '../cubit/accounts_cubit.dart';
 
@@ -21,8 +23,18 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
   final _balanceController = TextEditingController(text: '0.00');
 
   AccountType _selectedType = AccountType.checking;
+  String _selectedCurrency = Money.defaultCurrency;
   String _selectedIcon = 'account_balance';
   int _selectedColor = 0xFF1E3A8A;
+
+  @override
+  void initState() {
+    super.initState();
+    try {
+      final primary = context.read<CurrencyCubit>().state.primaryCurrency;
+      _selectedCurrency = primary;
+    } catch (_) {}
+  }
 
   static const List<Map<String, dynamic>> _iconOptions = [
     {'name': 'account_balance', 'icon': Icons.account_balance_outlined},
@@ -51,14 +63,15 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
   void _submit() {
     if (!_formKey.currentState!.validate()) return;
 
-    final parsedAmount = double.tryParse(_balanceController.text.replaceAll(',', '')) ?? 0.0;
-    final minorUnits = (parsedAmount * 100).round();
-    final balance = Money(minorUnits);
+    final minorUnits =
+        MoneyInputField.parseMinorUnits(_balanceController.text, _selectedCurrency) ?? 0;
+    final balance = Money(minorUnits, _selectedCurrency);
 
     final account = Account(
       id: const Uuid().v4(),
       name: _nameController.text.trim(),
       type: _selectedType,
+      currencyCode: _selectedCurrency,
       initialBalance: balance,
       currentBalance: balance,
       isArchived: false,
@@ -124,9 +137,45 @@ class _CreateAccountSheetState extends State<CreateAccountSheet> {
             ),
             const SizedBox(height: AppSpacing.lg),
 
+            DropdownButtonFormField<String>(
+              value: _selectedCurrency,
+              decoration: const InputDecoration(
+                labelText: 'Account Currency',
+                border: OutlineInputBorder(),
+                contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              ),
+              items: IsoCurrency.supportedCurrencies
+                  .map(
+                    (c) => DropdownMenuItem(
+                      value: c.code,
+                      child: Text('${c.code} - ${c.name} (${c.symbol})'),
+                    ),
+                  )
+                  .toList(),
+              onChanged: (val) {
+                if (val != null) {
+                  setState(() {
+                    _selectedCurrency = val;
+                  });
+                }
+              },
+            ),
+            const SizedBox(height: AppSpacing.lg),
+
             MoneyInputField(
               controller: _balanceController,
               label: 'Initial Balance',
+              currencyCode: _selectedCurrency,
+              validator: (val) {
+                if (val == null || val.trim().isEmpty) {
+                  return 'Please enter an amount';
+                }
+                final minorUnits =
+                    MoneyInputField.parseMinorUnits(val, _selectedCurrency);
+                if (minorUnits == null) return 'Invalid amount';
+                if (minorUnits < 0) return 'Balance cannot be negative';
+                return null;
+              },
             ),
             const SizedBox(height: AppSpacing.lg),
 

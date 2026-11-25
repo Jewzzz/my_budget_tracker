@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_native_splash/flutter_native_splash.dart';
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
 import 'core/database/app_database.dart';
 import 'core/theme/app_branding.dart';
 import 'core/theme/app_theme.dart';
@@ -22,6 +23,7 @@ import 'features/categories/presentation/cubit/categories_cubit.dart';
 import 'features/currency/data/repositories/currency_repository_impl.dart';
 import 'features/currency/domain/repositories/currency_repository.dart';
 import 'features/currency/presentation/cubit/currency_cubit.dart';
+import 'features/currency/presentation/widgets/currency_onboarding_interceptor.dart';
 import 'features/reports/data/repositories/reports_repository_impl.dart';
 import 'features/reports/domain/repositories/reports_repository.dart';
 import 'features/reports/presentation/cubit/reports_cubit.dart';
@@ -53,6 +55,7 @@ class BudgetTrackerApp extends StatefulWidget {
   final SecurityRepository? securityRepository;
   final BackupRepository? backupRepository;
   final CurrencyRepository? currencyRepository;
+  final FlutterSecureStorage? secureStorage;
   final ShareService? shareService;
   final FilePickerService? filePickerService;
 
@@ -68,6 +71,7 @@ class BudgetTrackerApp extends StatefulWidget {
     this.securityRepository,
     this.backupRepository,
     this.currencyRepository,
+    this.secureStorage,
     this.shareService,
     this.filePickerService,
   });
@@ -101,7 +105,8 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
       _isLocalDb = true;
     }
 
-    _currencyRepository = widget.currencyRepository ?? CurrencyRepositoryImpl(database: _database);
+    _currencyRepository = widget.currencyRepository ??
+        CurrencyRepositoryImpl(database: _database, secureStorage: widget.secureStorage);
     _accountRepository = widget.accountRepository ?? AccountRepositoryImpl(_database);
     _categoryRepository = widget.categoryRepository ?? CategoryRepositoryImpl(_database);
     _transactionRepository = widget.transactionRepository ?? TransactionRepositoryImpl(_database);
@@ -110,7 +115,8 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
     _savingsGoalRepository = widget.savingsGoalRepository ?? SavingsGoalRepositoryImpl(_database);
     _reportsRepository = widget.reportsRepository ??
         ReportsRepositoryImpl(_database, currencyRepository: _currencyRepository);
-    _securityRepository = widget.securityRepository ?? SecurityRepositoryImpl();
+    _securityRepository = widget.securityRepository ??
+        SecurityRepositoryImpl(secureStorage: widget.secureStorage);
     _backupRepository = widget.backupRepository ?? BackupRepositoryImpl(database: _database);
     _shareService = widget.shareService ?? ShareServiceImpl();
     _filePickerService = widget.filePickerService ?? FilePickerServiceImpl();
@@ -190,7 +196,12 @@ class _BudgetTrackerAppState extends State<BudgetTrackerApp> {
           theme: AppTheme.lightTheme,
           darkTheme: AppTheme.darkTheme,
           themeMode: ThemeMode.system,
-          home: const AppLockInterceptor(child: AppShell()),
+          home: AppLockInterceptor(
+            child: CurrencyOnboardingInterceptor(
+              secureStorage: widget.secureStorage,
+              child: const AppShell(),
+            ),
+          ),
         ),
       ),
     );

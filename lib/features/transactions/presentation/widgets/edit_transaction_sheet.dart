@@ -4,7 +4,9 @@ import 'package:intl/intl.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/temporal/date_normalizer.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/value_objects/iso_currency.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
@@ -40,9 +42,13 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   void initState() {
     super.initState();
     final txn = widget.transaction;
-    _amountController = TextEditingController(
-      text: (txn.amount.minorUnits.abs() / 100).toStringAsFixed(2),
-    );
+    final iso = IsoCurrency.fromCode(txn.currencyCode);
+    final decimals = iso.decimalDigits;
+    final scale = iso.scaleFactor;
+    final amountText = decimals == 0
+        ? txn.amount.minorUnits.abs().toString()
+        : (txn.amount.minorUnits.abs() / scale).toStringAsFixed(decimals);
+    _amountController = TextEditingController(text: amountText);
     _noteController = TextEditingController(text: txn.note ?? '');
     _selectedAccountId = txn.accountId;
     _selectedDestinationAccountId = txn.destinationAccountId;
@@ -71,12 +77,15 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
     }
   }
 
-  void _submit() {
+  void _submit(List<Account> accounts) {
     if (!_formKey.currentState!.validate()) return;
 
-    final parsedAmount = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
-    final minorUnits = (parsedAmount * 100).round();
-    final amount = Money(minorUnits);
+    final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+    final accountCurrency = source?.currencyCode ?? widget.transaction.currencyCode;
+
+    final minorUnits =
+        MoneyInputField.parseMinorUnits(_amountController.text, accountCurrency) ?? 0;
+    final amount = Money(minorUnits, accountCurrency);
 
     if (widget.transaction.isTransfer) {
       if (_selectedAccountId == _selectedDestinationAccountId) {
@@ -92,7 +101,7 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
       destinationAccountId: widget.transaction.isTransfer ? _selectedDestinationAccountId : null,
       categoryId: !widget.transaction.isTransfer ? _selectedCategoryId : null,
       amount: amount,
-      date: _selectedDate,
+      date: DateNormalizer.toUtcCalendarDate(_selectedDate),
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
     );
 
@@ -104,26 +113,30 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
   Widget build(BuildContext context) {
     final txn = widget.transaction;
 
-    return AppBottomSheet(
-      title: 'Edit ${txn.type.name[0].toUpperCase()}${txn.type.name.substring(1)}',
-      child: Form(
-        key: _formKey,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Amount Field
-            MoneyInputField(
-              controller: _amountController,
-              label: 'Amount',
-            ),
-            const SizedBox(height: AppSpacing.lg),
+    return BlocBuilder<AccountsCubit, AccountsState>(
+      builder: (context, accState) {
+        final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
+        final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+        final accountCurrency = source?.currencyCode ?? txn.currencyCode;
 
-            // Account Selection
-            BlocBuilder<AccountsCubit, AccountsState>(
-              builder: (context, accState) {
-                final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
-                return DropdownButtonFormField<String>(
+        return AppBottomSheet(
+          title: 'Edit ${txn.type.name[0].toUpperCase()}${txn.type.name.substring(1)}',
+          child: Form(
+            key: _formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Amount Field
+                MoneyInputField(
+                  controller: _amountController,
+                  currencyCode: accountCurrency,
+                  label: 'Amount',
+                ),
+                const SizedBox(height: AppSpacing.lg),
+
+                // Account Selection
+                DropdownButtonFormField<String>(
                   value: accounts.any((a) => a.id == _selectedAccountId) ? _selectedAccountId : null,
                   decoration: InputDecoration(
                     labelText: txn.isTransfer ? 'Source Account' : 'Account',
@@ -162,17 +175,12 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                   onChanged: (val) {
                     if (val != null) setState(() => _selectedAccountId = val);
                   },
-                );
-              },
-            ),
-            const SizedBox(height: AppSpacing.lg),
+                ),
+                const SizedBox(height: AppSpacing.lg),
 
-            // Destination Account if Transfer
-            if (txn.isTransfer) ...[
-              BlocBuilder<AccountsCubit, AccountsState>(
-                builder: (context, accState) {
-                  final accounts = accState is AccountsLoaded ? accState.accounts : <Account>[];
-                  return DropdownButtonFormField<String>(
+                // Destination Account if Transfer
+                if (txn.isTransfer) ...[
+                  DropdownButtonFormField<String>(
                     value: accounts.any((a) => a.id == _selectedDestinationAccountId)
                         ? _selectedDestinationAccountId
                         : null,
@@ -213,97 +221,97 @@ class _EditTransactionSheetState extends State<EditTransactionSheet> {
                     onChanged: (val) {
                       if (val != null) setState(() => _selectedDestinationAccountId = val);
                     },
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
 
-            // Category Selection if Expense or Income
-            if (!txn.isTransfer) ...[
-              BlocBuilder<TransactionsCubit, TransactionsState>(
-                builder: (context, transState) {
-                  final allCategories = transState is TransactionsLoaded ? transState.categories : <Category>[];
-                  final matchingCategories = txn.isExpense
-                      ? allCategories.where((c) => c.isExpense).toList()
-                      : allCategories.where((c) => c.isIncome).toList();
+                // Category Selection if Expense or Income
+                if (!txn.isTransfer) ...[
+                  BlocBuilder<TransactionsCubit, TransactionsState>(
+                    builder: (context, transState) {
+                      final allCategories = transState is TransactionsLoaded ? transState.categories : <Category>[];
+                      final matchingCategories = txn.isExpense
+                          ? allCategories.where((c) => c.isExpense).toList()
+                          : allCategories.where((c) => c.isIncome).toList();
 
-                  return DropdownButtonFormField<String>(
-                    value: matchingCategories.any((c) => c.id == _selectedCategoryId)
-                        ? _selectedCategoryId
-                        : null,
-                    decoration: const InputDecoration(
-                      labelText: 'Category',
-                      border: OutlineInputBorder(),
-                      contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    ),
-                    items: matchingCategories
-                        .map(
-                          (c) => DropdownMenuItem(
-                            value: c.id,
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                CategoryIconBadge(
-                                  iconName: c.icon,
-                                  color: Color(c.color),
-                                  size: CategoryBadgeSize.small,
+                      return DropdownButtonFormField<String>(
+                        value: matchingCategories.any((c) => c.id == _selectedCategoryId)
+                            ? _selectedCategoryId
+                            : null,
+                        decoration: const InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                          contentPadding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                        ),
+                        items: matchingCategories
+                            .map(
+                              (c) => DropdownMenuItem(
+                                value: c.id,
+                                child: Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    CategoryIconBadge(
+                                      iconName: c.icon,
+                                      color: Color(c.color),
+                                      size: CategoryBadgeSize.small,
+                                    ),
+                                    const SizedBox(width: 10),
+                                    Flexible(
+                                      child: Text(c.name, overflow: TextOverflow.ellipsis),
+                                    ),
+                                  ],
                                 ),
-                                const SizedBox(width: 10),
-                                Flexible(
-                                  child: Text(c.name, overflow: TextOverflow.ellipsis),
-                                ),
-                              ],
-                            ),
-                          ),
-                        )
-                        .toList(),
-                    onChanged: (val) {
-                      if (val != null) setState(() => _selectedCategoryId = val);
+                              ),
+                            )
+                            .toList(),
+                        onChanged: (val) {
+                          if (val != null) setState(() => _selectedCategoryId = val);
+                        },
+                      );
                     },
-                  );
-                },
-              ),
-              const SizedBox(height: AppSpacing.lg),
-            ],
+                  ),
+                  const SizedBox(height: AppSpacing.lg),
+                ],
 
-            // Date Picker
-            InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(8),
-              child: InputDecorator(
-                decoration: const InputDecoration(
-                  labelText: 'Date',
-                  border: OutlineInputBorder(),
-                  suffixIcon: Icon(Icons.calendar_today_outlined),
+                // Date Picker
+                InkWell(
+                  onTap: _pickDate,
+                  borderRadius: BorderRadius.circular(8),
+                  child: InputDecorator(
+                    decoration: const InputDecoration(
+                      labelText: 'Date',
+                      border: OutlineInputBorder(),
+                      suffixIcon: Icon(Icons.calendar_today_outlined),
+                    ),
+                    child: Text(DateFormat.yMMMd().format(_selectedDate)),
+                  ),
                 ),
-                child: Text(DateFormat.yMMMd().format(_selectedDate)),
-              ),
-            ),
-            const SizedBox(height: AppSpacing.lg),
+                const SizedBox(height: AppSpacing.lg),
 
-            // Note Field
-            TextFormField(
-              controller: _noteController,
-              decoration: const InputDecoration(
-                labelText: 'Note (Optional)',
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: AppSpacing.xl),
+                // Note Field
+                TextFormField(
+                  controller: _noteController,
+                  decoration: const InputDecoration(
+                    labelText: 'Note (Optional)',
+                    border: OutlineInputBorder(),
+                  ),
+                  maxLines: 2,
+                ),
+                const SizedBox(height: AppSpacing.xl),
 
-            // Save Changes Button
-            FilledButton(
-              onPressed: _submit,
-              style: FilledButton.styleFrom(
-                padding: const EdgeInsets.symmetric(vertical: 14),
-              ),
-              child: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                // Save Changes Button
+                FilledButton(
+                  onPressed: () => _submit(accounts),
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 14),
+                  ),
+                  child: const Text('Save Changes', style: TextStyle(fontSize: 16)),
+                ),
+              ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 }

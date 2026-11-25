@@ -60,5 +60,58 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text('Amount must be greater than 0'), findsOneWidget);
     });
+
+    testWidgets('dynamically formats 0-decimal currency JPY with integer input', (tester) async {
+      final controller = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Form(
+              key: formKey,
+              child: MoneyInputField(
+                controller: controller,
+                currencyCode: 'JPY',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('¥ '), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField), '15000');
+      expect(formKey.currentState!.validate(), isTrue);
+      expect(MoneyInputField.parseMinorUnits(controller.text, 'JPY'), 15000);
+    });
+
+    testWidgets('dynamically formats 3-decimal currency KWD with 3 decimal places', (tester) async {
+      final controller = TextEditingController();
+      final formKey = GlobalKey<FormState>();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: AppTheme.lightTheme,
+          home: Scaffold(
+            body: Form(
+              key: formKey,
+              child: MoneyInputField(
+                controller: controller,
+                currencyCode: 'KWD',
+              ),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.text('KD '), findsOneWidget);
+
+      await tester.enterText(find.byType(TextFormField), '1.250');
+      expect(formKey.currentState!.validate(), isTrue);
+      // 1.250 KWD * 1000 = 1250 fils
+      expect(MoneyInputField.parseMinorUnits(controller.text, 'KWD'), 1250);
+    });
   });
 }

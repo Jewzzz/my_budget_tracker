@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/theme/app_spacing.dart';
 import '../../../backup/presentation/pages/data_management_page.dart';
+import '../../../currency/presentation/pages/currency_settings_page.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../budgets/presentation/cubit/budgets_cubit.dart';
 import '../../../categories/presentation/cubit/categories_cubit.dart';
@@ -357,6 +358,48 @@ class SecuritySettingsPage extends StatelessWidget {
                       ),
                     ],
                   ],
+                ),
+              ),
+              const SizedBox(height: AppSpacing.xxl),
+
+              Text(
+                'CURRENCY & EXCHANGE RATES',
+                style: theme.textTheme.labelSmall?.copyWith(
+                  fontWeight: FontWeight.bold,
+                  color: theme.colorScheme.onSurfaceVariant,
+                  letterSpacing: 0.8,
+                ),
+              ),
+              const SizedBox(height: AppSpacing.sm),
+              Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: BorderSide(color: theme.colorScheme.outlineVariant.withAlpha(120)),
+                ),
+                child: ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: theme.colorScheme.surfaceContainerHighest,
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(Icons.currency_exchange_outlined),
+                  ),
+                  title: const Text(
+                    'Currency & Exchange Rates',
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  subtitle: const Text('Change primary reporting currency and configure offline rates'),
+                  trailing: const Icon(Icons.chevron_right),
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => const CurrencySettingsPage(),
+                      ),
+                    );
+                  },
                 ),
               ),
               const SizedBox(height: AppSpacing.xxl),

@@ -5,13 +5,16 @@ import 'package:uuid/uuid.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
+import '../../../../core/temporal/date_normalizer.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
+import '../../../../core/value_objects/iso_currency.dart';
 import '../../../../core/value_objects/money.dart';
 import '../../../accounts/domain/entities/account.dart';
 import '../../../accounts/presentation/cubit/accounts_cubit.dart';
 import '../../../accounts/presentation/cubit/accounts_state.dart';
 import '../../../categories/domain/entities/category.dart';
+import '../../../currency/presentation/cubit/currency_cubit.dart';
 import '../../domain/entities/transaction.dart';
 import '../cubit/transactions_cubit.dart';
 import '../cubit/transactions_state.dart';
@@ -34,6 +37,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   final _formKey = GlobalKey<FormState>();
 
   final _amountController = TextEditingController();
+  final _foreignAmountController = TextEditingController();
   final _noteController = TextEditingController();
 
   late TransactionType _currentType;
@@ -41,6 +45,10 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   String? _selectedDestinationAccountId;
   String? _selectedCategoryId;
   DateTime _selectedDate = DateTime.now();
+
+  bool _isForeignCurrency = false;
+  String _foreignCurrencyCode = 'EUR';
+  int? _exchangeRateScaled;
 
   @override
   void initState() {
@@ -69,8 +77,38 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   void dispose() {
     _tabController.dispose();
     _amountController.dispose();
+    _foreignAmountController.dispose();
     _noteController.dispose();
     super.dispose();
+  }
+
+  Future<void> _updateSettlementFromForeign(String accountCurrency) async {
+    final foreignMinor = MoneyInputField.parseMinorUnits(_foreignAmountController.text, _foreignCurrencyCode);
+    if (foreignMinor == null || foreignMinor <= 0) return;
+
+    try {
+      final currencyCubit = context.read<CurrencyCubit>();
+      final rateScaled = await currencyCubit.currencyRepository.getExchangeRateScaled(
+        baseCurrency: _foreignCurrencyCode,
+        targetCurrency: accountCurrency,
+      );
+      if (rateScaled != null && mounted) {
+        _exchangeRateScaled = rateScaled;
+        final foreignMoney = Money(foreignMinor, _foreignCurrencyCode);
+        final converted = Money.convert(
+          from: foreignMoney,
+          toCurrency: accountCurrency,
+          rateScaled: rateScaled,
+        );
+        final toIso = IsoCurrency.fromCode(accountCurrency);
+        final text = toIso.decimalDigits == 0
+            ? converted.minorUnits.abs().toString()
+            : (converted.minorUnits.abs() / toIso.scaleFactor).toStringAsFixed(toIso.decimalDigits);
+        _amountController.text = text;
+      }
+    } catch (_) {
+      // In tests or if CurrencyCubit is not in context
+    }
   }
 
   Future<void> _pickDate() async {
@@ -101,9 +139,12 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
   void _submit(List<Account> accounts) {
     if (!_formKey.currentState!.validate()) return;
 
-    final parsedAmount = double.tryParse(_amountController.text.replaceAll(',', '')) ?? 0.0;
-    final minorUnits = (parsedAmount * 100).round();
-    final amount = Money(minorUnits);
+    final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+    final accountCurrency = source?.currencyCode ?? Money.defaultCurrency;
+
+    final settlementMinor =
+        MoneyInputField.parseMinorUnits(_amountController.text, accountCurrency) ?? 0;
+    final amount = Money(settlementMinor, accountCurrency);
 
     if (_currentType == TransactionType.transfer) {
       if (_selectedAccountId == _selectedDestinationAccountId) {
@@ -112,7 +153,6 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
         );
         return;
       }
-      final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
       if (source != null &&
           source.type != AccountType.creditCard &&
           source.currentBalance < amount) {
@@ -123,15 +163,35 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
       }
     }
 
+    Money? originalAmount;
+    int? rateScaled = _exchangeRateScaled;
+    if (_isForeignCurrency && _currentType != TransactionType.transfer) {
+      final foreignMinor =
+          MoneyInputField.parseMinorUnits(_foreignAmountController.text, _foreignCurrencyCode) ?? 0;
+      originalAmount = Money(foreignMinor, _foreignCurrencyCode);
+      if (foreignMinor > 0 && settlementMinor > 0 && rateScaled == null) {
+        final fromFactor = IsoCurrency.fromCode(_foreignCurrencyCode).scaleFactor;
+        final toFactor = IsoCurrency.fromCode(accountCurrency).scaleFactor;
+        final bigSettlement = BigInt.from(settlementMinor);
+        final bigForeign = BigInt.from(foreignMinor);
+        final bigScale = BigInt.from(100000000);
+        rateScaled = ((bigSettlement * BigInt.from(fromFactor) * bigScale) ~/
+                (bigForeign * BigInt.from(toFactor)))
+            .toInt();
+      }
+    }
+
     final transaction = Transaction(
       id: const Uuid().v4(),
       accountId: _selectedAccountId!,
       type: _currentType,
       amount: amount,
+      originalAmount: originalAmount,
+      exchangeRateScaled: rateScaled,
       categoryId: _currentType == TransactionType.transfer ? null : _selectedCategoryId,
       destinationAccountId:
           _currentType == TransactionType.transfer ? _selectedDestinationAccountId : null,
-      date: _selectedDate.toUtc(),
+      date: DateNormalizer.toUtcCalendarDate(_selectedDate),
       note: _noteController.text.trim().isEmpty ? null : _noteController.text.trim(),
       createdAt: DateTime.now().toUtc(),
     );
@@ -152,6 +212,9 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
         if (_selectedAccountId == null && accounts.isNotEmpty) {
           _selectedAccountId = accounts.first.id;
         }
+        final source = accounts.where((a) => a.id == _selectedAccountId).firstOrNull;
+        final accountCurrency = source?.currencyCode ?? Money.defaultCurrency;
+
         if (_selectedDestinationAccountId == null && accounts.length > 1) {
           _selectedDestinationAccountId = accounts.firstWhere(
             (a) => a.id != _selectedAccountId,
@@ -210,11 +273,89 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                     ),
                     const SizedBox(height: AppSpacing.lg),
 
+                    // Foreign Currency Toggle for Expense & Income
+                    if (_currentType != TransactionType.transfer) ...[
+                      InkWell(
+                        onTap: () {
+                          setState(() {
+                            _isForeignCurrency = !_isForeignCurrency;
+                            if (!_isForeignCurrency) {
+                              _foreignAmountController.clear();
+                              _exchangeRateScaled = null;
+                            }
+                          });
+                        },
+                        child: Row(
+                          children: [
+                            Checkbox(
+                              value: _isForeignCurrency,
+                              onChanged: (val) {
+                                setState(() {
+                                  _isForeignCurrency = val ?? false;
+                                  if (!_isForeignCurrency) {
+                                    _foreignAmountController.clear();
+                                    _exchangeRateScaled = null;
+                                  }
+                                });
+                              },
+                            ),
+                            const Text('Foreign Currency Transaction'),
+                          ],
+                        ),
+                      ),
+                      if (_isForeignCurrency) ...[
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            SizedBox(
+                              width: 110,
+                              child: DropdownButtonFormField<String>(
+                                value: _foreignCurrencyCode,
+                                decoration: const InputDecoration(
+                                  labelText: 'Currency',
+                                  border: OutlineInputBorder(),
+                                  contentPadding:
+                                      EdgeInsets.symmetric(horizontal: 10, vertical: 12),
+                                ),
+                                items: IsoCurrency.supportedCurrencies
+                                    .where((c) => c.code != accountCurrency)
+                                    .map((c) => DropdownMenuItem(
+                                          value: c.code,
+                                          child: Text(c.code),
+                                        ))
+                                    .toList(),
+                                onChanged: (val) {
+                                  if (val != null) {
+                                    setState(() => _foreignCurrencyCode = val);
+                                    _updateSettlementFromForeign(accountCurrency);
+                                  }
+                                },
+                              ),
+                            ),
+                            const SizedBox(width: AppSpacing.md),
+                            Expanded(
+                              child: MoneyInputField(
+                                controller: _foreignAmountController,
+                                currencyCode: _foreignCurrencyCode,
+                                label: 'Foreign Amount',
+                                onChanged: (_) =>
+                                    _updateSettlementFromForeign(accountCurrency),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: AppSpacing.sm),
+                      ],
+                    ],
+
                     // Amount Field with auto-focus
                     MoneyInputField(
                       controller: _amountController,
-                      autofocus: true,
-                      label: 'Amount',
+                      currencyCode: accountCurrency,
+                      autofocus: !_isForeignCurrency,
+                      label: _isForeignCurrency
+                          ? 'Settlement Amount ($accountCurrency)'
+                          : 'Amount',
                     ),
                     const SizedBox(height: AppSpacing.lg),
 

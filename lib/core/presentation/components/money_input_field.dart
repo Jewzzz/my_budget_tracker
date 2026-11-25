@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../theme/app_radius.dart';
+import '../../value_objects/iso_currency.dart';
+import '../../value_objects/money.dart';
 
 class MoneyInputField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String currencySymbol;
+  final String? currencySymbol;
+  final String currencyCode;
   final bool autofocus;
   final ValueChanged<String>? onChanged;
   final String? Function(String?)? validator;
@@ -14,23 +17,52 @@ class MoneyInputField extends StatelessWidget {
     super.key,
     required this.controller,
     this.label = 'Amount',
-    this.currencySymbol = '\$',
+    this.currencySymbol,
+    this.currencyCode = Money.defaultCurrency,
     this.autofocus = false,
     this.onChanged,
     this.validator,
   });
 
+  static int? parseMinorUnits(String value, [String currencyCode = Money.defaultCurrency]) {
+    if (value.trim().isEmpty) return null;
+    final sanitized = value.replaceAll(',', '').trim();
+    final parts = sanitized.split('.');
+    if (parts.length > 2) return null;
+
+    final majors = int.tryParse(parts[0]);
+    if (majors == null) return null;
+
+    final iso = IsoCurrency.fromCode(currencyCode);
+    final decimals = iso.decimalDigits;
+    int minorUnits = majors * iso.scaleFactor;
+
+    if (parts.length == 2 && decimals > 0) {
+      final fracStr = parts[1].padRight(decimals, '0').substring(0, decimals);
+      final frac = int.tryParse(fracStr);
+      if (frac == null) return null;
+      minorUnits += frac;
+    }
+    return minorUnits;
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final iso = IsoCurrency.fromCode(currencyCode);
+    final effectiveSymbol = currencySymbol ?? iso.symbol;
+    final decimals = iso.decimalDigits;
 
     return TextFormField(
       controller: controller,
       autofocus: autofocus,
       textAlign: TextAlign.center,
-      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      keyboardType: TextInputType.numberWithOptions(decimal: decimals > 0),
       inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
+        if (decimals == 0)
+          FilteringTextInputFormatter.digitsOnly
+        else
+          FilteringTextInputFormatter.allow(RegExp('^\\d*\\.?\\d{0,$decimals}')),
       ],
       style: theme.textTheme.headlineSmall?.copyWith(
         fontWeight: FontWeight.bold,
@@ -38,7 +70,7 @@ class MoneyInputField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         labelText: label,
-        prefixText: '$currencySymbol ',
+        prefixText: '$effectiveSymbol ',
         prefixStyle: theme.textTheme.headlineSmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,
@@ -54,19 +86,8 @@ class MoneyInputField extends StatelessWidget {
             if (value == null || value.trim().isEmpty) {
               return 'Please enter an amount';
             }
-            final sanitized = value.replaceAll(',', '').trim();
-            final parts = sanitized.split('.');
-            if (parts.length > 2) return 'Invalid amount';
-            final dollars = int.tryParse(parts[0]);
-            if (dollars == null) return 'Invalid amount';
-            int cents = 0;
-            if (parts.length == 2) {
-              final centsStr = parts[1].padRight(2, '0').substring(0, 2);
-              final parsedCents = int.tryParse(centsStr);
-              if (parsedCents == null) return 'Invalid amount';
-              cents = parsedCents;
-            }
-            final minorUnits = dollars * 100 + cents;
+            final minorUnits = parseMinorUnits(value, currencyCode);
+            if (minorUnits == null) return 'Invalid amount';
             if (minorUnits <= 0) {
               return 'Amount must be greater than 0';
             }
