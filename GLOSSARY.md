@@ -29,7 +29,7 @@ An immutable value object representing a financial quantity stored as an integer
 _Avoid_: Amount (as a type), price, float value
 
 **Primary Currency**:
-The single user-selected fiat currency (e.g., USD, EUR, LKR) governing all accounts, transactions, budgets, and financial reports throughout the application.
+The single user-selected fiat currency (e.g., USD, EUR, LKR) governing the display symbol and currency code for all accounts, transactions, budgets, savings goals, and financial reports throughout the application. Changing the Primary Currency updates only how monetary amounts are labeled and does not convert or alter stored financial values.
 _Avoid_: Base currency, default currency, exchange currency
 
 **Category**:

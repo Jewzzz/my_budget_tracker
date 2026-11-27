@@ -73,8 +73,8 @@ void main() {
 
       expect(find.text('Monthly Budget'), findsOneWidget);
       expect(find.text('40% used'), findsOneWidget);
-      expect(find.text(r'$200.00 spent of $500.00'), findsOneWidget);
-      expect(find.text(r'$300.00 left'), findsOneWidget);
+      expect(find.text(r'$ 200.00 spent of $ 500.00'), findsOneWidget);
+      expect(find.text(r'$ 300.00 left'), findsOneWidget);
     });
 
     testWidgets('renders over-budget warning tag when spending exceeds budget', (tester) async {
@@ -97,7 +97,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.text('Over-Budget (1)'), findsOneWidget);
-      expect(find.text(r'Over by $50.00'), findsOneWidget);
+      expect(find.text(r'Over by $ 50.00'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
   });

@@ -123,7 +123,7 @@ void main() {
 
       // Verify Summary Banner
       expect(find.text('Total Saved'), findsOneWidget);
-      expect(find.text('\$400.00'), findsWidgets); // Saved amount
+      expect(find.text('\$ 400.00'), findsWidgets); // Saved amount
 
       // Verify Active Goal Card
       expect(find.text('Vacation Trip'), findsOneWidget);

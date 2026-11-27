@@ -146,11 +146,11 @@ void main() {
 
       // Verify Cash Flow metrics
       expect(find.text('Total Income'), findsOneWidget);
-      expect(find.text('\$4,000.00'), findsOneWidget);
+      expect(find.text('\$ 4,000.00'), findsOneWidget);
       expect(find.text('Total Expenses'), findsOneWidget);
-      expect(find.text('\$1,500.00'), findsOneWidget);
+      expect(find.text('\$ 1,500.00'), findsOneWidget);
       expect(find.text('Net Cash Flow'), findsOneWidget);
-      expect(find.text('\$2,500.00'), findsOneWidget);
+      expect(find.text('\$ 2,500.00'), findsOneWidget);
       expect(find.text('Savings Rate'), findsOneWidget);
       expect(find.text('62.5%'), findsOneWidget);
 
@@ -178,14 +178,14 @@ void main() {
 
       // Verify ranked list items
       expect(find.text('Groceries'), findsOneWidget);
-      expect(find.text('\$1,000.00'), findsOneWidget);
+      expect(find.text('\$ 1,000.00'), findsOneWidget);
       expect(find.textContaining('66.7%'), findsWidgets);
 
       await tester.drag(find.byType(ListView), const Offset(0, -300));
       await tester.pumpAndSettle();
 
       expect(find.text('Dining'), findsOneWidget);
-      expect(find.text('\$500.00'), findsOneWidget);
+      expect(find.text('\$ 500.00'), findsOneWidget);
       expect(find.textContaining('33.3%'), findsWidgets);
     });
 
@@ -206,9 +206,9 @@ void main() {
 
       // Verify metrics
       expect(find.text('Current Net Worth'), findsOneWidget);
-      expect(find.text('\$12,500.00'), findsOneWidget);
+      expect(find.text('\$ 12,500.00'), findsOneWidget);
       expect(find.text('Net Change'), findsOneWidget);
-      expect(find.text('+\$2,500.00'), findsOneWidget);
+      expect(find.text('+\$ 2,500.00'), findsOneWidget);
 
       // Verify fl_chart LineChart
       expect(find.byType(LineChart), findsOneWidget);

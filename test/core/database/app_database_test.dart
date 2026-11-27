@@ -13,8 +13,10 @@ void main() {
       await database.close();
     });
 
-    test('initializes in-memory database with schema version 1', () async {
-      expect(database.schemaVersion, 1);
+    test('initializes in-memory database with schema version 2', () async {
+      expect(database.schemaVersion, 2);
+      final settings = await database.select(database.appSettings).get();
+      expect(settings, isEmpty);
     });
 
     test('executes simple query to verify SQLite connection', () async {

@@ -11,7 +11,8 @@ import '../../dashboard/presentation/pages/dashboard_page.dart';
 import '../../reports/presentation/pages/reports_page.dart';
 import '../../savings_goals/presentation/pages/savings_goals_page.dart';
 import '../../security/presentation/cubit/security_cubit.dart';
-import '../../security/presentation/pages/security_settings_page.dart';
+import '../../settings/presentation/cubit/settings_cubit.dart';
+import '../../settings/presentation/pages/settings_page.dart';
 import '../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../../transactions/presentation/pages/transactions_page.dart';
 import '../../transactions/presentation/widgets/quick_add_transaction_sheet.dart';
@@ -164,12 +165,21 @@ class _AppShellState extends State<AppShell> {
             icon: const Icon(Icons.settings_outlined),
             tooltip: 'Settings',
             onPressed: () {
+              final providers = <BlocProvider<dynamic>>[
+                BlocProvider<SecurityCubit>.value(value: context.read<SecurityCubit>()),
+              ];
+              try {
+                providers.add(
+                  BlocProvider<SettingsCubit>.value(value: context.read<SettingsCubit>()),
+                );
+              } catch (_) {}
+
               Navigator.push(
                 context,
                 MaterialPageRoute(
-                  builder: (_) => BlocProvider.value(
-                    value: context.read<SecurityCubit>(),
-                    child: const SecuritySettingsPage(),
+                  builder: (_) => MultiBlocProvider(
+                    providers: providers,
+                    child: const SettingsPage(),
                   ),
                 ),
               );

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
@@ -251,7 +252,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                                   const SizedBox(width: 8),
                                   Flexible(
                                     child: Text(
-                                      '${acc.name} (${acc.currentBalance.format()})',
+                                      '${acc.name} (${context.formatMoney(acc.currentBalance)})',
                                       overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
@@ -306,7 +307,7 @@ class _QuickAddTransactionSheetState extends State<QuickAddTransactionSheet>
                                     const SizedBox(width: 8),
                                     Flexible(
                                       child: Text(
-                                        '${acc.name} (${acc.currentBalance.format()})',
+                                        '${acc.name} (${context.formatMoney(acc.currentBalance)})',
                                         overflow: TextOverflow.ellipsis,
                                       ),
                                     ),

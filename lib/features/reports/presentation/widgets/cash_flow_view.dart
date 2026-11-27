@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_card.dart';
 import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -263,7 +264,7 @@ class CashFlowView extends StatelessWidget {
             final month = data[group.x.toInt()].label;
             final isInc = rodIndex == 0;
             final type = isInc ? 'Income' : 'Expense';
-            final value = '\$${rod.toY.toStringAsFixed(2)}';
+            final value = context.formatMajorCurrency(rod.toY);
             return BarTooltipItem(
               '$month\n$type: $value',
               TextStyle(
@@ -281,11 +282,11 @@ class CashFlowView extends StatelessWidget {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 42,
+            reservedSize: 60,
             getTitlesWidget: (val, meta) {
               if (val == 0) return const SizedBox.shrink();
               return Text(
-                '\$${val >= 1000 ? "${(val / 1000).toStringAsFixed(0)}k" : val.toStringAsFixed(0)}',
+                context.formatCompactCurrency(val),
                 style: TextStyle(
                   fontSize: 10,
                   color: theme.colorScheme.onSurfaceVariant,

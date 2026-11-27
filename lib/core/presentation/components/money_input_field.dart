@@ -1,11 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import '../../currency/currency_context_extension.dart';
 import '../../theme/app_radius.dart';
 
 class MoneyInputField extends StatelessWidget {
   final TextEditingController controller;
   final String label;
-  final String currencySymbol;
+  final String? currencySymbol;
   final bool autofocus;
   final ValueChanged<String>? onChanged;
   final String? Function(String?)? validator;
@@ -14,7 +15,7 @@ class MoneyInputField extends StatelessWidget {
     super.key,
     required this.controller,
     this.label = 'Amount',
-    this.currencySymbol = '\$',
+    this.currencySymbol,
     this.autofocus = false,
     this.onChanged,
     this.validator,
@@ -23,6 +24,7 @@ class MoneyInputField extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+    final effectiveSymbol = currencySymbol ?? context.primaryCurrency.symbol;
 
     return TextFormField(
       controller: controller,
@@ -38,7 +40,7 @@ class MoneyInputField extends StatelessWidget {
       ),
       decoration: InputDecoration(
         labelText: label,
-        prefixText: '$currencySymbol ',
+        prefixText: '$effectiveSymbol ',
         prefixStyle: theme.textTheme.headlineSmall?.copyWith(
           color: theme.colorScheme.onSurfaceVariant,
           fontWeight: FontWeight.w600,

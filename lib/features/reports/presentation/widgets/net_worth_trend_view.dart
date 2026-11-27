@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:flutter/material.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_card.dart';
 import '../../../../core/presentation/components/money_text.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -178,7 +179,7 @@ class NetWorthTrendView extends StatelessWidget {
               if (idx >= 0 && idx < points.length) {
                 final pt = points[idx];
                 return LineTooltipItem(
-                  '${pt.label}\n${pt.netWorth.format()}',
+                  '${pt.label}\n${context.formatMoney(pt.netWorth)}',
                   TextStyle(
                     color: theme.colorScheme.onSurface,
                     fontWeight: FontWeight.bold,
@@ -197,11 +198,11 @@ class NetWorthTrendView extends StatelessWidget {
         leftTitles: AxisTitles(
           sideTitles: SideTitles(
             showTitles: true,
-            reservedSize: 46,
+            reservedSize: 60,
             getTitlesWidget: (val, meta) {
               if (val < 0) return const SizedBox.shrink();
               return Text(
-                '\$${val >= 1000 ? "${(val / 1000).toStringAsFixed(0)}k" : val.toStringAsFixed(0)}',
+                context.formatCompactCurrency(val),
                 style: TextStyle(
                   fontSize: 10,
                   color: theme.colorScheme.onSurfaceVariant,

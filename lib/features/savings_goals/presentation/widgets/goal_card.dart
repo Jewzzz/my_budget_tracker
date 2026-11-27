@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_card.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -131,7 +132,7 @@ class GoalCard extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                '${goal.savedAmount.format()} of ${goal.targetAmount.format()}',
+                '${context.formatMoney(goal.savedAmount)} of ${context.formatMoney(goal.targetAmount)}',
                 style: theme.textTheme.bodyMedium?.copyWith(
                   fontWeight: FontWeight.w600,
                 ),
@@ -139,7 +140,7 @@ class GoalCard extends StatelessWidget {
               Text(
                 goal.isCompleted
                     ? 'Completed'
-                    : 'Remaining: ${goal.remainingAmount.format()}',
+                    : 'Remaining: ${context.formatMoney(goal.remainingAmount)}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.colorScheme.onSurfaceVariant,
                 ),

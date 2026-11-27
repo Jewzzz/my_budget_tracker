@@ -1,5 +1,6 @@
 import 'package:equatable/equatable.dart';
-import 'package:intl/intl.dart';
+import '../currency/currency.dart';
+import '../currency/currency_formatter.dart';
 
 /// Immutable domain Value Object representing money stored as integer minor units (e.g. cents).
 class Money extends Equatable implements Comparable<Money> {
@@ -27,13 +28,23 @@ class Money extends Equatable implements Comparable<Money> {
   @override
   int compareTo(Money other) => minorUnits.compareTo(other.minorUnits);
 
-  /// Formats the money into a localized currency string using [NumberFormat.simpleCurrency].
-  String format({String currencyCode = 'USD', String locale = 'en_US'}) {
-    final format = NumberFormat.simpleCurrency(
+  /// Formats the money using the centralized [CurrencyFormatter] without converting [minorUnits].
+  String format({
+    Currency? currency,
+    String? currencyCode,
+    String locale = 'en_US',
+    bool showSign = false,
+  }) {
+    final resolvedCurrency = currency ??
+        (currencyCode != null
+            ? SupportedCurrencies.fromCode(currencyCode)
+            : SupportedCurrencies.usd);
+    return CurrencyFormatter.formatMoney(
+      this,
+      currency: resolvedCurrency,
       locale: locale,
-      name: currencyCode,
+      showSign: showSign,
     );
-    return format.format(minorUnits / 100.0);
   }
 
   @override
