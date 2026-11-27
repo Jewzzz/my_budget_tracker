@@ -1,4 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_budget_tracker/core/currency/currency.dart';
 import 'package:my_budget_tracker/core/value_objects/money.dart';
 
 void main() {
@@ -61,10 +62,11 @@ void main() {
 
     test('formats currency with locale and symbol correctly', () {
       const money = Money(1050);
-      expect(money.format(currencyCode: 'USD', locale: 'en_US'), r'$10.50');
+      expect(money.format(currencyCode: 'USD', locale: 'en_US'), r'$ 10.50');
+      expect(money.format(currency: SupportedCurrencies.lkr), 'Rs 10.50');
 
       const negativeMoney = Money(-1050);
-      expect(negativeMoney.format(currencyCode: 'USD', locale: 'en_US'), r'-$10.50');
+      expect(negativeMoney.format(currencyCode: 'USD', locale: 'en_US'), r'-$ 10.50');
     });
 
     test('converts to readable string', () {
