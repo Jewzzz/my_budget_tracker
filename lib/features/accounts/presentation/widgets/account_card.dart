@@ -94,20 +94,26 @@ class AccountCard extends StatelessWidget {
                 Row(
                   children: [
                     Expanded(
-                      child: MoneyText(
-                        amount: account.currentBalance,
-                        autoColor: isNegative,
-                        style: theme.textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
+                      child: FittedBox(
+                        fit: BoxFit.scaleDown,
+                        alignment: Alignment.centerLeft,
+                        child: MoneyText(
+                          amount: account.currentBalance,
+                          autoColor: isNegative,
+                          style: theme.textTheme.titleLarge?.copyWith(
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                     ),
-                    if (isNegative)
+                    if (isNegative) ...[
+                      const SizedBox(width: 4),
                       Icon(
                         Icons.warning_amber_rounded,
                         size: 16,
                         color: theme.colorScheme.error,
                       ),
+                    ],
                   ],
                 ),
               ],

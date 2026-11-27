@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_card.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -100,15 +101,15 @@ class DashboardBudgetSection extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    '${totalSpent.format()} spent of ${totalBudgeted.format()}',
+                    '${context.formatMoney(totalSpent)} spent of ${context.formatMoney(totalBudgeted)}',
                     style: theme.textTheme.bodySmall?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
                   ),
                   Text(
                     state.netRemaining.isNegative
-                        ? 'Over by ${state.netRemaining.abs().format()}'
-                        : '${state.netRemaining.format()} left',
+                        ? 'Over by ${context.formatMoney(state.netRemaining.abs())}'
+                        : '${context.formatMoney(state.netRemaining)} left',
                     style: theme.textTheme.bodySmall?.copyWith(
                       fontWeight: FontWeight.w600,
                       color: state.netRemaining.isNegative

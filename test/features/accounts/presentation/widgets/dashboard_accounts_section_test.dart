@@ -69,7 +69,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.text('Total Balance'), findsOneWidget);
-      expect(find.text(r'$500.00'), findsNWidgets(2)); // Total balance + Account card balance
+      expect(find.text(r'$ 500.00'), findsNWidgets(2)); // Total balance + Account card balance
       expect(find.text('Main Checking'), findsOneWidget);
       expect(find.text('Checking'), findsOneWidget);
     });

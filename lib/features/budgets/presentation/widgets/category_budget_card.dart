@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_card.dart';
 import '../../../../core/presentation/components/category_icon_badge.dart';
 import '../../../../core/presentation/components/money_text.dart';
@@ -65,7 +66,7 @@ class CategoryBudgetCard extends StatelessWidget {
                       ),
                     ),
                     Text(
-                      '${overview.spentAmount.format()} of ${overview.budget.limitAmount.format()}',
+                      '${context.formatMoney(overview.spentAmount)} of ${context.formatMoney(overview.budget.limitAmount)}',
                       style: theme.textTheme.bodySmall?.copyWith(
                         color: theme.colorScheme.onSurfaceVariant,
                       ),

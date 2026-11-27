@@ -101,7 +101,7 @@ void main() {
 
       expect(find.text('Recent Transactions'), findsOneWidget);
       expect(find.text('Groceries'), findsOneWidget);
-      expect(find.text(r'-$32.50'), findsOneWidget);
+      expect(find.text(r'-$ 32.50'), findsOneWidget);
       expect(find.textContaining('Main Checking'), findsOneWidget);
     });
 
@@ -145,7 +145,7 @@ void main() {
 
       expect(find.text('Transfer'), findsOneWidget);
       expect(find.textContaining('Main Checking → Savings Pot'), findsOneWidget);
-      expect(find.text(r'$150.00'), findsOneWidget);
+      expect(find.text(r'$ 150.00'), findsOneWidget);
       expect(find.byIcon(Icons.swap_horiz_outlined), findsOneWidget);
     });
   });

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -120,13 +121,13 @@ class TransactionDetailsSheet extends StatelessWidget {
             final String amountText;
             if (transaction.isTransfer) {
               amountColor = AppColors.transfer;
-              amountText = transaction.amount.format();
+              amountText = context.formatMoney(transaction.amount);
             } else if (transaction.isIncome) {
               amountColor = AppColors.income;
-              amountText = '+${transaction.amount.format()}';
+              amountText = context.formatMoney(transaction.amount.abs(), showSign: true);
             } else {
               amountColor = AppColors.expense;
-              amountText = '-${transaction.amount.format()}';
+              amountText = context.formatMoney(-transaction.amount.abs(), showSign: true);
             }
 
             final IconData iconData;

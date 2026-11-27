@@ -131,7 +131,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.text('Salary'), findsOneWidget);
-      expect(find.text(r'+$2,500.00'), findsOneWidget);
+      expect(find.text(r'+$ 2,500.00'), findsOneWidget);
       expect(find.textContaining('Paycheck'), findsOneWidget);
     });
 
@@ -177,7 +177,7 @@ void main() {
       expect(find.text('Transfer'), findsOneWidget);
       expect(find.textContaining('Main Checking → Emergency Fund'), findsOneWidget);
       expect(find.textContaining('Monthly emergency fund deposit'), findsOneWidget);
-      expect(find.text(r'$100.00'), findsOneWidget);
+      expect(find.text(r'$ 100.00'), findsOneWidget);
       expect(find.byIcon(Icons.swap_horiz_outlined), findsOneWidget);
     });
 
@@ -192,7 +192,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.textContaining('Net: +'), findsOneWidget);
-      expect(find.textContaining(r'$2,500.00'), findsAtLeastNWidgets(1));
+      expect(find.textContaining(r'$ 2,500.00'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('groups multiple days with distinct daily net totals', (tester) async {
@@ -207,11 +207,11 @@ void main() {
 
       // May 2 Expense Day has negative net
       expect(find.textContaining('Net: -'), findsOneWidget);
-      expect(find.textContaining(r'$45.00'), findsAtLeastNWidgets(1));
+      expect(find.textContaining(r'$ 45.00'), findsAtLeastNWidgets(1));
 
       // May 1 Income Day has positive net
       expect(find.textContaining('Net: +'), findsOneWidget);
-      expect(find.textContaining(r'$2,500.00'), findsAtLeastNWidgets(1));
+      expect(find.textContaining(r'$ 2,500.00'), findsAtLeastNWidgets(1));
     });
 
     testWidgets('shows filter badge when transaction filter is active', (tester) async {

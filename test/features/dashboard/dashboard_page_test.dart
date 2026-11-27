@@ -122,11 +122,11 @@ void main() {
 
       expect(find.text('Total Balance'), findsOneWidget);
       expect(find.text('Net Worth'), findsOneWidget);
-      expect(find.text(r'$1,500.00'), findsNWidgets(2)); // Hero balance + Account card balance
+      expect(find.text(r'$ 1,500.00'), findsNWidgets(2)); // Hero balance + Account card balance
 
       // Cash flow pills & Recent transactions
-      expect(find.textContaining(r'+$4,000.00'), findsNWidgets(2));
-      expect(find.textContaining(r'-$1,200.00'), findsNWidgets(2));
+      expect(find.textContaining(r'+$ 4,000.00'), findsNWidgets(2));
+      expect(find.textContaining(r'-$ 1,200.00'), findsNWidgets(2));
 
       // Quick action buttons
       expect(find.text('Quick Add'), findsOneWidget);

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:intl/intl.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_radius.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -27,7 +28,7 @@ class GoalDetailsSheet extends StatelessWidget {
         title: const Text('Delete Savings Goal?'),
         content: Text(
           'Are you sure you want to delete "${goal.name}"? '
-          '${goal.savedAmount.isPositive ? "\n\nNote: ${goal.savedAmount.format()} is currently stored in this goal. Consider withdrawing it first." : ""}',
+          '${goal.savedAmount.isPositive ? "\n\nNote: ${context.formatMoney(goal.savedAmount)} is currently stored in this goal. Consider withdrawing it first." : ""}',
         ),
         actions: [
           TextButton(
@@ -139,7 +140,7 @@ class GoalDetailsSheet extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Saved: ${goal.savedAmount.format()} / ${goal.targetAmount.format()}',
+                    'Saved: ${context.formatMoney(goal.savedAmount)} / ${context.formatMoney(goal.targetAmount)}',
                     style: theme.textTheme.bodyMedium?.copyWith(
                       color: theme.colorScheme.onSurfaceVariant,
                     ),
@@ -240,7 +241,7 @@ class GoalDetailsSheet extends StatelessWidget {
                           final account = accounts.where((a) => a.id == c.accountId).firstOrNull;
 
                           final color = isDeposit ? AppColors.income : AppColors.expense;
-                          final prefix = isDeposit ? '+' : '-';
+                          final signedAmount = isDeposit ? c.amount.abs() : -c.amount.abs();
 
                           return ListTile(
                             contentPadding: EdgeInsets.zero,
@@ -264,7 +265,7 @@ class GoalDetailsSheet extends StatelessWidget {
                               ),
                             ),
                             trailing: Text(
-                              '$prefix${c.amount.format()}',
+                              context.formatMoney(signedAmount, showSign: true),
                               style: theme.textTheme.titleMedium?.copyWith(
                                 fontWeight: FontWeight.bold,
                                 color: color,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/currency/currency_context_extension.dart';
 import '../../../../core/presentation/components/app_bottom_sheet.dart';
 import '../../../../core/presentation/components/money_input_field.dart';
 import '../../../../core/theme/app_spacing.dart';
@@ -139,7 +140,7 @@ class _DepositWithdrawSheetState extends State<DepositWithdrawSheet> {
                               const SizedBox(width: 8),
                               Flexible(
                                 child: Text(
-                                  '${a.name} (${a.currentBalance.format()})',
+                                  '${a.name} (${context.formatMoney(a.currentBalance)})',
                                   overflow: TextOverflow.ellipsis,
                                 ),
                               ),

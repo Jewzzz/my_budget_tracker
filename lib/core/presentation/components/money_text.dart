@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import '../../currency/currency_context_extension.dart';
+import '../../currency/currency_formatter.dart';
 import '../../theme/app_colors.dart';
 import '../../value_objects/money.dart';
 
@@ -25,13 +27,13 @@ class MoneyText extends StatelessWidget {
     final theme = Theme.of(context);
     final isNegative = amount.isNegative;
     final isPositive = amount.isPositive;
+    final currency = context.primaryCurrency;
 
-    String formatted = amount.abs().format();
-    if (isNegative) {
-      formatted = '-$formatted';
-    } else if (showSign && isPositive) {
-      formatted = '+$formatted';
-    }
+    String formatted = CurrencyFormatter.formatMoney(
+      amount,
+      currency: currency,
+      showSign: showSign,
+    );
     if (prefix != null) {
       formatted = '$prefix$formatted';
     }

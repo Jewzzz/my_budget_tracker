@@ -18,7 +18,7 @@ void main() {
         ),
       );
 
-      expect(find.text('\$2,500.00'), findsOneWidget);
+      expect(find.text('\$ 2,500.00'), findsOneWidget);
     });
 
     testWidgets('displays explicit positive sign and semantic income color', (tester) async {
@@ -36,7 +36,7 @@ void main() {
       );
 
       final textWidget = tester.widget<Text>(find.byType(Text));
-      expect(textWidget.data, '+\$150.00');
+      expect(textWidget.data, '+\$ 150.00');
       expect(textWidget.style?.color, AppColors.income);
     });
 
@@ -55,7 +55,7 @@ void main() {
       );
 
       final textWidget = tester.widget<Text>(find.byType(Text));
-      expect(textWidget.data, '-\$85.00');
+      expect(textWidget.data, '-\$ 85.00');
       expect(textWidget.style?.color, AppColors.expense);
     });
   });

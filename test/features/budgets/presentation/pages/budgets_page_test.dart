@@ -157,16 +157,16 @@ void main() {
 
       // Banner checks
       expect(find.text('Total Budgeted'), findsOneWidget);
-      expect(find.text(r'$500.00'), findsAtLeastNWidgets(1));
+      expect(find.text(r'$ 500.00'), findsAtLeastNWidgets(1));
       expect(find.text('Total Spent'), findsOneWidget);
-      expect(find.text(r'$200.00'), findsAtLeastNWidgets(1));
+      expect(find.text(r'$ 200.00'), findsAtLeastNWidgets(1));
       expect(find.text('Remaining'), findsOneWidget);
-      expect(find.text(r'$300.00'), findsAtLeastNWidgets(1));
+      expect(find.text(r'$ 300.00'), findsAtLeastNWidgets(1));
 
       // Category card checks
       expect(find.text('Groceries'), findsOneWidget);
       expect(find.text('40%'), findsOneWidget);
-      expect(find.text('Remaining: \$300.00'), findsOneWidget);
+      expect(find.text('Remaining: \$ 300.00'), findsOneWidget);
     });
 
     testWidgets('renders visual warning tag when category is over budget', (tester) async {
@@ -181,7 +181,7 @@ void main() {
       await tester.pumpWidget(buildTestWidget());
 
       expect(find.text('Over Budget'), findsAtLeastNWidgets(1));
-      expect(find.text('Over by \$50.00'), findsOneWidget);
+      expect(find.text('Over by \$ 50.00'), findsOneWidget);
       expect(find.byIcon(Icons.warning_amber_rounded), findsOneWidget);
     });
 
