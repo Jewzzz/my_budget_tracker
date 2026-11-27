@@ -5,6 +5,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 
 import 'tables/accounts_table.dart';
+import 'tables/app_settings_table.dart';
 import 'tables/budgets_table.dart';
 import 'tables/categories_table.dart';
 import 'tables/goal_contributions_table.dart';
@@ -13,7 +14,17 @@ import 'tables/transactions_table.dart';
 
 part 'app_database.g.dart';
 
-@DriftDatabase(tables: [Accounts, Categories, Transactions, Budgets, SavingsGoals, GoalContributions])
+@DriftDatabase(
+  tables: [
+    Accounts,
+    AppSettings,
+    Categories,
+    Transactions,
+    Budgets,
+    SavingsGoals,
+    GoalContributions,
+  ],
+)
 class AppDatabase extends _$AppDatabase {
   AppDatabase([QueryExecutor? executor]) : super(executor ?? _openConnection());
 
@@ -22,13 +33,18 @@ class AppDatabase extends _$AppDatabase {
   }
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 2;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (m) async {
           await m.createAll();
           await seedDefaultCategoriesIfEmpty();
+        },
+        onUpgrade: (m, from, to) async {
+          if (from < 2) {
+            await m.createTable(appSettings);
+          }
         },
         beforeOpen: (details) async {
           await customStatement('PRAGMA foreign_keys = ON;');
