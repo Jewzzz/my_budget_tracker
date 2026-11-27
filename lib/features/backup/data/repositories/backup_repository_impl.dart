@@ -7,8 +7,10 @@ import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 
+import '../../../../core/currency/currency.dart';
 import '../../../../core/database/app_database.dart';
 import '../../../../core/error/failures.dart';
+import '../../../settings/data/repositories/settings_repository_impl.dart';
 import '../../domain/repositories/backup_repository.dart';
 
 class BackupRepositoryImpl implements BackupRepository {
@@ -36,6 +38,8 @@ class BackupRepositoryImpl implements BackupRepository {
     final transactions = (await database.select(database.transactions).get()).map((r) => r.toJson()).toList();
     final goalContributions =
         (await database.select(database.goalContributions).get()).map((r) => r.toJson()).toList();
+    final appSettings =
+        (await database.select(database.appSettings).get()).map((r) => r.toJson()).toList();
 
     final data = {
       'accounts': accounts,
@@ -44,6 +48,7 @@ class BackupRepositoryImpl implements BackupRepository {
       'savingsGoals': savingsGoals,
       'transactions': transactions,
       'goalContributions': goalContributions,
+      'appSettings': appSettings,
     };
 
     final checksum = sha256.convert(utf8.encode(jsonEncode(data))).toString();
@@ -114,6 +119,14 @@ class BackupRepositoryImpl implements BackupRepository {
         final goalContributionsList = (data['goalContributions'] as List? ?? [])
             .map((e) => GoalContributionRow.fromJson(e as Map<String, dynamic>))
             .toList();
+        final hasAppSettings = data.containsKey('appSettings');
+        final appSettingsList = (data['appSettings'] as List? ?? [])
+            .map((e) => AppSettingRow.fromJson(e as Map<String, dynamic>))
+            .toList();
+
+        if (hasAppSettings) {
+          await database.delete(database.appSettings).go();
+        }
 
         await database.batch((b) {
           b.insertAll(database.categories, categoriesList);
@@ -122,6 +135,9 @@ class BackupRepositoryImpl implements BackupRepository {
           b.insertAll(database.savingsGoals, savingsGoalsList);
           b.insertAll(database.transactions, transactionsList);
           b.insertAll(database.goalContributions, goalContributionsList);
+          if (hasAppSettings && appSettingsList.isNotEmpty) {
+            b.insertAll(database.appSettings, appSettingsList);
+          }
         });
       });
     } catch (e) {
@@ -142,6 +158,11 @@ class BackupRepositoryImpl implements BackupRepository {
       ..orderBy([(t) => OrderingTerm(expression: t.transactionDate, mode: OrderingMode.desc)]);
     final transactions = await txQuery.get();
 
+    final currencyRow = await (database.select(database.appSettings)
+          ..where((t) => t.key.equals(SettingsRepositoryImpl.keyPrimaryCurrencyCode)))
+        .getSingleOrNull();
+    final currency = SupportedCurrencies.fromCode(currencyRow?.value).code;
+
     final buffer = StringBuffer();
     buffer.writeln('Date,Type,Account,Category,Amount,Currency,Note');
 
@@ -153,7 +174,6 @@ class BackupRepositoryImpl implements BackupRepository {
       final account = _escapeCsvField(accountNames[tx.accountId] ?? tx.accountId);
       final category = _escapeCsvField(tx.categoryId != null ? (categoryNames[tx.categoryId] ?? '') : '');
       final amount = (tx.amountMinorUnits / 100.0).toStringAsFixed(2);
-      const currency = 'USD';
       final note = _escapeCsvField(tx.note ?? '');
 
       buffer.writeln('$dateStr,$type,$account,$category,$amount,$currency,$note');

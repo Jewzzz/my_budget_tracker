@@ -4,9 +4,11 @@ import 'dart:io';
 import 'package:crypto/crypto.dart';
 import 'package:drift/drift.dart' as drift;
 import 'package:flutter_test/flutter_test.dart';
+import 'package:my_budget_tracker/core/currency/currency.dart';
 import 'package:my_budget_tracker/core/database/app_database.dart';
 import 'package:my_budget_tracker/core/error/failures.dart';
 import 'package:my_budget_tracker/features/backup/data/repositories/backup_repository_impl.dart';
+import 'package:my_budget_tracker/features/settings/data/repositories/settings_repository_impl.dart';
 
 void main() {
   late AppDatabase database;
@@ -289,6 +291,44 @@ void main() {
       expect(row.contains('USD'), isTrue);
       // Double quotes should be escaped as per RFC 4180
       expect(row.contains('""groceries""'), isTrue);
+    });
+
+    test('exports active Primary Currency code in CSV and preserves appSettings in JSON backup', () async {
+      final settingsRepo = SettingsRepositoryImpl(database);
+      await settingsRepo.setPrimaryCurrency(SupportedCurrencies.lkr);
+
+      await database.into(database.accounts).insert(
+            AccountsCompanion.insert(
+              id: 'acc-1',
+              name: 'Main Checking',
+              accountType: 'checking',
+              initialBalanceMinorUnits: const drift.Value(50000),
+              currentBalanceMinorUnits: const drift.Value(50000),
+              icon: 'account_balance',
+              color: 0xFF2196F3,
+              createdAt: 1700000000,
+            ),
+          );
+
+      await database.into(database.transactions).insert(
+            TransactionsCompanion.insert(
+              id: 'tx-1',
+              accountId: 'acc-1',
+              transactionType: 'expense',
+              amountMinorUnits: 2500000,
+              categoryId: const drift.Value('cat-groceries'),
+              transactionDate: DateTime(2026, 11, 15, 14, 30).millisecondsSinceEpoch,
+              createdAt: 1700000000,
+            ),
+          );
+
+      final csv = await repository.exportTransactionsCsv();
+      expect(csv.contains('25000.00,LKR,'), isTrue);
+
+      final backupJson = await repository.exportBackupJson();
+      await settingsRepo.setPrimaryCurrency(SupportedCurrencies.usd);
+      await repository.restoreFromJson(backupJson);
+      expect(await settingsRepo.getPrimaryCurrency(), SupportedCurrencies.lkr);
     });
   });
 
