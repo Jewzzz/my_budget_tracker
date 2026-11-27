@@ -7,6 +7,7 @@ import '../../../budgets/presentation/cubit/budgets_cubit.dart';
 import '../../../categories/presentation/cubit/categories_cubit.dart';
 import '../../../reports/presentation/cubit/reports_cubit.dart';
 import '../../../savings_goals/presentation/cubit/savings_goals_cubit.dart';
+import '../../../settings/presentation/cubit/settings_cubit.dart';
 import '../../../transactions/presentation/cubit/transactions_cubit.dart';
 import '../cubit/security_cubit.dart';
 import '../cubit/security_state.dart';
@@ -404,6 +405,7 @@ class SecuritySettingsPage extends StatelessWidget {
                               context.read<BudgetsCubit>().loadBudgets();
                               context.read<SavingsGoalsCubit>().loadGoals();
                               context.read<ReportsCubit>().loadReports();
+                              context.read<SettingsCubit>().loadSettings();
                             } catch (_) {
                               // If any cubit is not available in tree
                             }

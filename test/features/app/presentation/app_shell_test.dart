@@ -29,7 +29,9 @@ import 'package:my_budget_tracker/features/savings_goals/presentation/cubit/savi
 import 'package:my_budget_tracker/features/savings_goals/presentation/pages/savings_goals_page.dart';
 import 'package:my_budget_tracker/features/security/presentation/cubit/security_cubit.dart';
 import 'package:my_budget_tracker/features/security/presentation/cubit/security_state.dart';
-import 'package:my_budget_tracker/features/security/presentation/pages/security_settings_page.dart';
+import 'package:my_budget_tracker/features/settings/presentation/cubit/settings_cubit.dart';
+import 'package:my_budget_tracker/features/settings/presentation/cubit/settings_state.dart';
+import 'package:my_budget_tracker/features/settings/presentation/pages/settings_page.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_cubit.dart';
 import 'package:my_budget_tracker/features/transactions/presentation/cubit/transactions_state.dart';
 
@@ -41,6 +43,7 @@ class MockSavingsGoalsCubit extends MockCubit<SavingsGoalsState> implements Savi
 class MockSavingsGoalRepository extends Mock implements SavingsGoalRepository {}
 class MockReportsCubit extends MockCubit<ReportsState> implements ReportsCubit {}
 class MockSecurityCubit extends MockCubit<SecurityState> implements SecurityCubit {}
+class MockSettingsCubit extends MockCubit<SettingsState> implements SettingsCubit {}
 
 void main() {
   group('AppShell Widget Tests', () {
@@ -52,6 +55,7 @@ void main() {
     late SavingsGoalRepository savingsGoalRepository;
     late ReportsCubit reportsCubit;
     late SecurityCubit securityCubit;
+    late SettingsCubit settingsCubit;
 
     setUp(() {
       accountsCubit = MockAccountsCubit();
@@ -62,6 +66,7 @@ void main() {
       savingsGoalRepository = MockSavingsGoalRepository();
       reportsCubit = MockReportsCubit();
       securityCubit = MockSecurityCubit();
+      settingsCubit = MockSettingsCubit();
 
       when(() => accountsCubit.state).thenReturn(
         const AccountsLoaded(
@@ -114,6 +119,7 @@ void main() {
       );
 
       when(() => securityCubit.state).thenReturn(const SecurityState.initial());
+      when(() => settingsCubit.state).thenReturn(const SettingsState());
 
       when(() => savingsGoalRepository.watchContributions(any()))
           .thenAnswer((_) => Stream.value([]));
@@ -135,6 +141,7 @@ void main() {
               BlocProvider<SavingsGoalsCubit>.value(value: savingsGoalsCubit),
               BlocProvider<ReportsCubit>.value(value: reportsCubit),
               BlocProvider<SecurityCubit>.value(value: securityCubit),
+              BlocProvider<SettingsCubit>.value(value: settingsCubit),
             ],
             child: const AppShell(),
           ),
@@ -206,14 +213,15 @@ void main() {
       expect(find.text('Save Transaction'), findsOneWidget);
     });
 
-    testWidgets('tapping Settings icon opens SecuritySettingsPage', (tester) async {
+    testWidgets('tapping Settings icon opens SettingsPage', (tester) async {
       await tester.pumpWidget(buildTestApp());
 
       await tester.tap(find.byIcon(Icons.settings_outlined));
       await tester.pumpAndSettle();
 
-      expect(find.byType(SecuritySettingsPage), findsOneWidget);
-      expect(find.text('Security Settings'), findsOneWidget);
+      expect(find.byType(SettingsPage), findsOneWidget);
+      expect(find.text('Settings'), findsOneWidget);
+      expect(find.text('Primary Currency'), findsOneWidget);
     });
 
     testWidgets('when on Budgets tab, FAB has Set Category Budget tooltip and opens SetBudgetSheet', (tester) async {
